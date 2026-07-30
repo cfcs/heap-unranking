@@ -77,13 +77,13 @@ pub fn unrank(prefixes: &Vec<Box<[u8]>>, n: usize, mut k: usize) -> Box<[u8]> {
         .zip(qs)
         .rev()
     {
-        assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
         if n & 1 == 0 {
             for _ in 0..q {
                 reset_permutation(&mut scratch, &prefix, &mut permutation);
                 permutation.swap(0, n);
             }
         } else {
+            assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
             for i in 0..q {
                 reset_permutation(&mut scratch, &prefix, &mut permutation);
                 permutation.swap(i, n);

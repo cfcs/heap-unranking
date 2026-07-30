@@ -41,7 +41,14 @@ What's currently missing from this repo is an efficient algorithm for job splitt
 
 - [Wikipedia on Heap's algorithm](https://en.wikipedia.org/wiki/Heap%27s_algorithm)
 - [Stackexchange explanation of the problem we're solving](https://cs.stackexchange.com/questions/165155/rank-and-unrank-for-heaps-algorithm)
-- [Efficient Algorithms to Rank and Unrank Permutations in Lexicographic Order, Bonet](https://bonetblai.github.io/reports/AAAI08-ws10-ranking.pdf) - interesting paper about solving it for a different permutation algorithm
 - Knuth volume 4A: section `7.2.1.2`: Generating all permutations
   - "Bypassing unwanted blocks", see the part where Knuth talks about Heap's algorithm being a special case of "Algorithm G"
   - essentially rank() corresponds to converting k to step G1, and executing step G4, with unrank() is being the inverse
+
+### References (other algorithms)
+- *Ranking and unranking permutations in linear time*, Myrvold & Ruskey, 2000
+- *Generation of Permutations by Transposition*, Mark B. Wells, August 1960
+- *Permutation Enumeration: Four new permutation algorithms*, F.M. Ives, 1976 (with PL/I implementations!)
+- *A Unified Framework to Discover Permutation Generation Algorithms*, Ganapath & Chowdhury, 2021
+- *Strictly In-Place Algorithms for Permuting and Inverting Permutations*, Dudek & Gawrychowski & Pokorski, 2021
+- [Efficient Algorithms to Rank and Unrank Permutations in Lexicographic Order, Bonet](https://bonetblai.github.io/reports/AAAI08-ws10-ranking.pdf)
