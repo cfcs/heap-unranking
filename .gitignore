@@ -1,0 +1,7 @@
+# rust temp files:
+Cargo.lock
+target/
+
+# emacs temp files:
+\#*\#
+*~
