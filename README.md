@@ -18,6 +18,8 @@ One would think that these properties would also make Heap's algorithm popular f
 Besides touching only two elements per step, Heap's algorithm has another interesting property:
 The prefix permutation repeats, for example the permutations of `n` will consist of the permutation pattern for `n-1` applied n times, with an additional swap at the end. We can use this property to "fast-forward" by caching these end-state prefix permutations and keeping track of how many times they would have been applied.
 
+Applying a cached prefix and its swap moves elements around without ever looking at their values, so it is a permutation of *positions*. That makes any number of repetitions at a given position collapse into one permutation, which `precompute()` tabulates for every (position, repetition count) pair. Each of the `n` positions then costs a single pass instead of a pass per repetition.
+
 This yields an O(n^2) solution, which is "slow", but it's a lot faster than O(factorial(n)), and thus enables parallel programs to use Heap's algorithm for enumerating the permutations.
 
 ## Source code index
@@ -30,8 +32,11 @@ Rust source code in `src/lib.rs`:
   - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
 - `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm
   - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
+- `pub fn unrank_into(prefixes, k, out)`: as `unrank`, writing into a caller-owned buffer
 - `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`
   - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
+
+`cargo run --release --example bench` reports per-call throughput for both directions.
 
 ## Missing
 

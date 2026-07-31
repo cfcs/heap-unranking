@@ -5,19 +5,19 @@ mod kat_tests {
     #[test]
     fn rank_kats() {
         let s = precompute(20);
-        assert_eq!(0, rank(&s, [0, 1, 2].into()));
-        assert_eq!(5, rank(&s, [2, 1, 0].into()));
-        assert_eq!(20, rank(&s, [1, 3, 2, 0].into()));
-        assert_eq!(9, rank(&s, [3, 0, 1, 2, 4].into()));
+        assert_eq!(0, rank(&s, &[0, 1, 2]));
+        assert_eq!(5, rank(&s, &[2, 1, 0]));
+        assert_eq!(20, rank(&s, &[1, 3, 2, 0]));
+        assert_eq!(9, rank(&s, &[3, 0, 1, 2, 4]));
         assert_eq!(
             39916798,
-            rank(&s, [1, 10, 2, 3, 4, 5, 6, 7, 8, 9, 0].into())
+            rank(&s, &[1, 10, 2, 3, 4, 5, 6, 7, 8, 9, 0])
         );
         assert_eq!(
             154423787521,
             rank(
                 &s,
-                [7, 2, 10, 14, 12, 13, 5, 0, 6, 3, 1, 4, 9, 8, 11].into()
+                &[7, 2, 10, 14, 12, 13, 5, 0, 6, 3, 1, 4, 9, 8, 11]
             )
         );
     }
