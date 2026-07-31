@@ -20,9 +20,15 @@ impl Lcg {
     }
 }
 
+fn bench<T>(label: &str, iters: usize, f: impl FnMut() -> T) {
+    bench_batch(label, iters, 1, f);
+}
+
 // Warm up, then report the best of several reps. A single unwarmed run overstated
 // these by up to 2x at small n, which is enough to draw the wrong conclusion.
-fn bench<T>(label: &str, iters: usize, mut f: impl FnMut() -> T) {
+// A call yielding `batch` results is reported per result, so a batched and a
+// one-at-a-time spelling of the same work can be read off against each other.
+fn bench_batch<T>(label: &str, iters: usize, batch: usize, mut f: impl FnMut() -> T) {
     for _ in 0..iters / 3 {
         black_box(f());
     }
@@ -32,7 +38,7 @@ fn bench<T>(label: &str, iters: usize, mut f: impl FnMut() -> T) {
         for _ in 0..iters {
             black_box(f());
         }
-        best = best.min(start.elapsed().as_nanos() as f64 / iters as f64);
+        best = best.min(start.elapsed().as_nanos() as f64 / (iters * batch) as f64);
     }
     println!("{label:28} {best:>9.1} ns/op   {:>8.2} Mops/s", 1e3 / best);
 }
@@ -66,6 +72,20 @@ fn main() {
         bench(&format!("rank(n={n})"), 1_000_000, || {
             i = (i + 1) % perms.len();
             rank(&s, &perms[i])
+        });
+    }
+
+    // Job splitting is bounded by n rather than by n!, so it is measured well past the
+    // n = 20 where a rank stops fitting in a usize.
+    const PARTS: usize = 4096;
+    for n in [20usize, 40, 80] {
+        let mut i = 0;
+        bench(&format!("split_boundary(n={n})"), 1_000_000, || {
+            i = (i + 1) % PARTS;
+            split_boundary(n, PARTS, i)
+        });
+        bench_batch(&format!("split_factoradic(n={n})"), 1_000, PARTS, || {
+            split_factoradic(n, PARTS)
         });
     }
 }
