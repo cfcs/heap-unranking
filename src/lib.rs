@@ -5,11 +5,16 @@
 // rank(P): calculate "k" (how many iterations of Heap's algorithm it took to produce P)
 //
 // Both functions use precomputed tables obtainable with precompute(n-1)
+//
+// split_factoradic(n,parts): carve 0 .. n! into spans, one per parallel job
+
+mod split;
+pub use split::{Factoradic, factorial_div_rem, split_boundary, split_factoradic, split_ranks};
 
 // Permutation elements are u8, so no array can hold more than 256 distinct values.
 // rank()/unrank() size their stack buffers to this, which also lets the compiler see
 // that a u8 read out of the tables is always an in-bounds index (see gather_in_place).
-const MAX_N: usize = 256;
+pub(crate) const MAX_N: usize = 256;
 
 // arr[0 .. p.len()] = [arr[p[0]], arr[p[1]], ..]; the tail of arr is left untouched.
 // the "scratch" buffer is used to store the collected elements
@@ -144,16 +149,38 @@ pub fn precompute(max_n: usize) -> Prefixes {
     }
 }
 
-// Write the k'th output of Heap's algorithm for a permutation of out.len() elements.
-// Runtime: O(n^2) worst case, O(n) best case
-pub fn unrank_into(prefixes: &Prefixes, mut k: usize, out: &mut [u8]) {
+// Replay the moves named by factoradic digits, one gather per level: digits[i] is level
+// i's move count, and levels above `top` are known to be zero.
+fn apply_digits(prefixes: &Prefixes, digits: &[u8], top: usize, out: &mut [u8]) {
+    assert!(
+        top <= prefixes.max_level,
+        "unrank() needs precompute({top}), got precompute({})",
+        prefixes.max_level
+    );
+
     let n = out.len();
     let mut arr = [0u8; MAX_N];
     for (t, a) in arr[..n].iter_mut().enumerate() {
         *a = t as u8; // 0, 1, .., n-1
     }
 
-    // Translate k to factoradic digits: qs[i-1] is level i's move count. k running dry
+    let mut scratch = [0u8; MAX_N];
+    for level in (1..=top).rev() {
+        let q = digits[level] as usize;
+        if q != 0 {
+            gather_in_place(prefixes.step(level, q), &mut arr, &mut scratch);
+        }
+    }
+
+    out.copy_from_slice(&arr[..n]);
+}
+
+// Write the k'th output of Heap's algorithm for a permutation of out.len() elements.
+// Runtime: O(n^2) worst case, O(n) best case
+pub fn unrank_into(prefixes: &Prefixes, mut k: usize, out: &mut [u8]) {
+    let n = out.len();
+
+    // Translate k to factoradic digits: qs[i] is level i's move count. k running dry
     // means every remaining digit is zero, so `top` is the highest level that moves at
     // all -- values of k well below n! skip the wide levels entirely.
     //
@@ -170,7 +197,7 @@ pub fn unrank_into(prefixes: &Prefixes, mut k: usize, out: &mut [u8]) {
                 let q = k % $base;
                 k /= $base;
                 if q != 0 {
-                    qs[$base - 2] = q as u8;
+                    qs[$base - 1] = q as u8;
                     top = $base - 1;
                 }
             }
@@ -183,27 +210,32 @@ pub fn unrank_into(prefixes: &Prefixes, mut k: usize, out: &mut [u8]) {
         let q = k % base;
         k /= base;
         if q != 0 {
-            qs[base - 2] = q as u8;
+            qs[base - 1] = q as u8;
             top = base - 1;
         }
         base += 1;
     }
 
+    apply_digits(prefixes, &qs, top, out);
+}
+
+// As unrank_into(), for a rank too large to be a usize. Job splitting hands out its
+// boundaries this way, so that n is bounded by the permutations one can enumerate rather
+// than by the ranks one can count.
+pub fn unrank_factoradic_into(prefixes: &Prefixes, k: &Factoradic, out: &mut [u8]) {
+    let n = out.len();
+    let digits = k.digits();
+    let width = n.min(digits.len());
+
+    // Levels only go up to n-1, so anything above is the caller unranking a rank that is
+    // not below n! -- most likely the exclusive end of the last job's span.
     assert!(
-        top <= prefixes.max_level,
-        "unrank() needs precompute({top}), got precompute({})",
-        prefixes.max_level
+        digits[width..].iter().all(|&d| d == 0),
+        "unrank_factoradic() argument is not below {n}!"
     );
 
-    let mut scratch = [0u8; MAX_N];
-    for level in (1..=top).rev() {
-        let q = qs[level - 1] as usize;
-        if q != 0 {
-            gather_in_place(prefixes.step(level, q), &mut arr, &mut scratch);
-        }
-    }
-
-    out.copy_from_slice(&arr[..n]);
+    let top = digits[..width].iter().rposition(|&d| d != 0).unwrap_or(0);
+    apply_digits(prefixes, digits, top, out);
 }
 
 // Compute the k'th output of Heap's algorithm for a permutation of n elements.
@@ -211,6 +243,13 @@ pub fn unrank_into(prefixes: &Prefixes, mut k: usize, out: &mut [u8]) {
 pub fn unrank(prefixes: &Prefixes, n: usize, k: usize) -> Box<[u8]> {
     let mut out = vec![0u8; n].into_boxed_slice();
     unrank_into(prefixes, k, &mut out);
+    out
+}
+
+// Compute the k'th output of Heap's algorithm, for a k given in factoradic.
+pub fn unrank_factoradic(prefixes: &Prefixes, n: usize, k: &Factoradic) -> Box<[u8]> {
+    let mut out = vec![0u8; n].into_boxed_slice();
+    unrank_factoradic_into(prefixes, k, &mut out);
     out
 }
 
