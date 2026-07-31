@@ -6,6 +6,7 @@
 
 - `unrank(n, offset) -> Permutation`: "Seek"/skip to a numbered permutation output by Heap's algorithm for an array of length `n`.
 - `rank(Permutation) -> int`: Identify the offset ("rank") of a given permutation from the start.
+- `split_factoradic(n, parts) -> [Factoradic]`: Carve $$k \in 0 .. factorial(n) - 1$$ into one contiguous span per parallel job.
 
 ## Introduction
 
@@ -17,6 +18,8 @@ One would think that these properties would also make Heap's algorithm popular f
 
 Besides touching only two elements per step, Heap's algorithm has another interesting property:
 The prefix permutation repeats, for example the permutations of `n` will consist of the permutation pattern for `n-1` applied n times, with an additional swap at the end. We can use this property to "fast-forward" by caching these end-state prefix permutations and keeping track of how many times they would have been applied.
+
+Applying a cached prefix and its swap moves elements around without ever looking at their values, so it is a permutation of *positions*. That makes any number of repetitions at a given position collapse into one permutation, which `precompute()` tabulates for every (position, repetition count) pair. Each of the `n` positions then costs a single pass instead of a pass per repetition.
 
 This yields an O(n^2) solution, which is "slow", but it's a lot faster than O(factorial(n)), and thus enables parallel programs to use Heap's algorithm for enumerating the permutations.
 
@@ -30,12 +33,29 @@ Rust source code in `src/lib.rs`:
   - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
 - `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm
   - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
+- `pub fn unrank_into(prefixes, k, out)`: as `unrank`, writing into a caller-owned buffer
 - `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`
   - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
+- `pub fn unrank_factoradic(prefixes, n, k)`: as `unrank`, for a `k` too large to be a `usize`
 
-## Missing
+Job splitting, in `src/split.rs`:
+- `pub struct Factoradic`: a rank in the factorial number system, with the arithmetic the split needs
+- `pub fn factorial_div_rem(n, divisor)`: divide `factorial(n)` without ever forming it
+- `pub fn split_factoradic(n, parts)`: every boundary of an even split, ascending
+- `pub fn split_boundary(n, parts, index)`: one boundary of that same split, in isolation
+- `pub fn split_ranks(n, parts)`: `split_factoradic()` as plain `usize` ranks, for `n <= 20`
 
-What's currently missing from this repo is an efficient algorithm for job splitting, computing either `k` spans or, probably more interesting, factoradic spans to cover $$k \in 0 .. factorial(n) - 1$$ for a given number of partitions.
+`cargo run --release --example bench` reports per-call throughput for both directions.
+
+## Job splitting
+
+`split_factoradic(n, parts)` returns `parts + 1` ascending boundaries, and job `j` owns the half-open span between boundaries `j` and `j+1`. Boundary `0` is `0` and boundary `parts` is `factorial(n)`, and no two spans differ in length by more than one permutation.
+
+The obstacle is that a rank only fits in a `usize` up to `n = 20`, while splitting the work is exactly the case where `n` is larger. Boundaries are therefore computed in the factorial number system — the same digits `unrank()` consumes — in which `factorial(n)` is a single 1 followed by `n` zeroes. Dividing it by the number of jobs is then schoolbook long division over `n+1` small digits, differing from the fixed-radix version only in that stepping down one place multiplies the running remainder by `i+1` instead of by a constant. So `factorial(n)` never materializes as an integer and no bignum is involved.
+
+Writing that division as $$factorial(n) = q \cdot parts + r$$, boundary `j` is $$j \cdot q + \lfloor j \cdot r / parts \rfloor$$. `split_boundary(n, parts, index)` evaluates it in O(n), so a worker that knows only its own index can derive its span without coordinating; `split_factoradic()` steps the boundaries instead, at one O(n) addition apiece.
+
+Spans stop being longer than a `usize` well before their endpoints do, so at any `n` a job can be handed a start permutation and a count: `unrank_factoradic()` for the start, and the difference of two boundaries for the count.
 
 ## References
 
