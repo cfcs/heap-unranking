@@ -1,3 +1,11 @@
+"""
+Ranking / unranking functions for Heap's algorithm.
+cfcs, july 2026
+
+The rust implementation has received more love, but the more the merrier.
+See the README in https://github.com/cfcs/heap-unranking for details.
+"""
+
 import math
 
 def verify_single_swap(p1, p2):
@@ -124,7 +132,7 @@ class HeapUnranker:
         return self._unrank_recursive(n, k, arr)
 
     def _unrank_recursive(self, n, k, arr):
-        if n == 1: # avoid division by zero and terminate recursion
+        if n <= 1: # base case
             return tuple(arr)
 
         q, r = divmod(k, self.fact[n-1])
@@ -146,15 +154,15 @@ class HeapUnranker:
 
         # 1. Move the array state forward by q full blocks of size (n-1)!
         for j in range(q):
-            # Every full block consists of a full run of (n-1), which we
-            # have cached:
+            # 2. Every full block consists of a full run of (n-1), which we
+            #    have cached:
             arr[:len(self.S[n-1])] = [arr[p] for p in self.S[n-1]]
-            # followed by the specific swap for this level:
+            # 3. followed by the specific swap for this level:
             j_or_0 = (n & 1 == 0) * j
             arr[j_or_0], arr[n-1] = arr[n-1], arr[j_or_0]
 
-        # 2. Now we are at the start of the q-th block.
-        # We need to find the r-th permutation of the first n-1 elements.
+        # 4. Now we are at the start of the q-th block.
+        #    We need to find the r-th permutation of the first n-1 elements.
         return self._unrank_recursive(n - 1, r, arr)
 
     def unrank_loop(self, nn, k):
@@ -228,12 +236,10 @@ def run_test(n):
          print(f"Failure at k={k}!")
          print(f"Expected: {expected}")
          print(f"Got:      {result}")
-         return False
+         exit()
 
     print(f"All {math.factorial(n)} permutations match.")
-    return True
 
 if __name__ == "__main__":
     for size in range(1,11):
-        if not run_test(size):
-            break
+        run_test(size)

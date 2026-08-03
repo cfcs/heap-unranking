@@ -84,7 +84,6 @@ mod unittests {
         assert_eq!(6, k);
     }
 
-
     #[test]
     fn unrank_matches_output_0_10() {
         // check that unrank() matches the traditional Heap's algorithm's outputs
@@ -111,22 +110,23 @@ mod unittests {
     #[test]
     fn functional_0_unrank_test() {
         // check that unrank and unrank_recursive agree
-        let s = precompute(10);
-        for n in 1..10 {
+        let s = precompute(1);
+        (1..20).for_each(|n| {
             let f = unrank_recursive(n, 0);
             let o = unrank(&s, n, 0);
             assert_eq!(o, f.into());
-        }
+        })
     }
     #[test]
     fn functional_1_unrank_test() {
-        // check that unrank and unrank_recursive agree
-        let s = precompute(10);
-        for n in 1..20 {
+        // check that unrank and unrank_recursive agree.
+        // Since we are only looking at k=1, we don't need the prefix table
+        let prefixes = precompute(1);
+        (1..20).for_each(|n| {
             let f = unrank_recursive(n, 1);
-            let o = unrank(&s, n, 1);
+            let o = unrank(&prefixes, n, 1);
             assert_eq!(o, f.into());
-        }
+        })
     }
     #[test]
     fn functional_n_unrank_test() {

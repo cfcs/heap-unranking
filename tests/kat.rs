@@ -1,6 +1,91 @@
+//
+// Known-answer tests for unrank(), rank()
+//
+
 #[cfg(test)]
 mod kat_tests {
     use heap_unranking::*;
+
+    #[test]
+    fn precompute_kats() {
+        // Known-answer tests for precompute()
+
+        //
+        // Note that these look suspiciously regular; do we really need to precompute them?
+        // - Depending on whether n is odd or even they have:
+        //   - Even: two first elements [n-2],[n-3], second-to-last is n[-1]
+        //   - Odd : first element is [n-1]
+        // But I'm not convinced this is true for all $n$, can we prove that property?
+        //
+        // Something like:
+        fn f(n: usize, i: usize) -> u8 {
+            assert!(i <= n);
+            // There's probably a tighter formulation of this with fewer cases?
+            if i == n - 1 {
+                return 0;
+            } // last element is always zero
+            if i == n - 2 && n & 1 == 0 {
+                return (n - 1) as u8;
+            }
+            if n == 2 && i == 0 {
+                return (1 - i) as u8;
+            } // special case for n=2 where we want [1,0]
+            match i {
+                0 => (n - 3 + (n & 1) * 2) as u8, // for n==2 this underflows and produces -1+0 == -1 but we want 1
+                1 if n & 1 == 0 => (n - 2) as u8,
+                i => (i - 1 + (n & 1)) as u8,
+            }
+        }
+        let vectors: Vec<Box<[u8]>> = vec![
+            Box::new([0]),                                                            // 1
+            Box::new([1, 0]),                                                         // 2
+            Box::new([2, 1, 0]),                                                      // 3
+            Box::new([1, 2, 3, 0]),                                                   // 4
+            Box::new([4, 1, 2, 3, 0]),                                                // 5
+            Box::new([3, 4, 1, 2, 5, 0]),                                             // 6
+            Box::new([6, 1, 2, 3, 4, 5, 0]),                                          // 7
+            Box::new([5, 6, 1, 2, 3, 4, 7, 0]),                                       // 8
+            Box::new([8, 1, 2, 3, 4, 5, 6, 7, 0]),                                    // 9
+            Box::new([7, 8, 1, 2, 3, 4, 5, 6, 9, 0]),                                 // 10
+            Box::new([10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]),                             // 11
+            Box::new([9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 11, 0]),                         // 12
+            Box::new([12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0]),                     // 13
+            Box::new([11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 0]),                 // 14
+            Box::new([14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0]),             // 14
+            Box::new([13, 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 0]),         // 15
+            Box::new([16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]),     // 16
+            Box::new([15, 16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 0]), // 17
+            Box::new([
+                18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0,
+            ]), // 18
+            Box::new([
+                17, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 0,
+            ]), // 19
+            Box::new([
+                20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 0,
+            ]), // 20
+            Box::new([
+                19, 20, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 0,
+            ]), // 21
+        ];
+        for i in 1..=vectors.len() {
+            let prefixes = &vectors[0..i];
+            assert_eq!(
+                precompute(i),
+                prefixes,
+                "element {:?} doesn't match, expected: {:?}",
+                i - 1,
+                precompute(i)[i - 1]
+            );
+            prefixes[prefixes.len() - 1]
+                .iter()
+                .enumerate()
+                .for_each(|(x, &pdigit)| {
+                    let p2digit = f(prefixes.len(), x);
+                    assert_eq!(pdigit, p2digit, "{i}/{x}");
+                });
+        }
+    }
 
     #[test]
     fn rank_kats() {
