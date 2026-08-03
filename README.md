@@ -21,21 +21,23 @@ Besides touching only two elements per step, Heap's algorithm other interesting 
 
 This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O(\text{factorial}(n))$, and thus enables parallel programs to use Heap's algorithm for enumerating the permutations.
 
-3. It is perhaps also worth mentioning that fewer than $n-1$ prefixes are needed for small $k$; for example $ k = 0 $ does not make use of the prefix-enabled skipping.
+3. It is perhaps also worth mentioning that fewer than $n-1$ prefixes are needed for small $k$; for example $k = 0$ does not make use of the prefix-enabled skipping.
 
 4. It [seems likely](https://github.com/cfcs/heap-unranking/pull/1) that there exists a trade-off spectrum between the size of the prefix table and the runtime complexity per `rank()`/`unrank()` that yields an $O(n^2)$ implementation, at the cost of an $O(n^3)$ *space* to store multiple prefixes to cache each of the the "jumps" for each factoradic digit value. Storing a fraction of these (say half of them, or $\log{n}$ of them), can then be balanced to a sliding scale like $O(n^2 \log{n})$ runtime + space.
+
+5. See `tests/kat.rs:precompute_kats()` for an alternative solution that trades the need for prefix tables for more processing per `unrank`/rank`.
 
 ## Source code index
 
 So here are a couple of implementations, based on exploiting the property that the prefix permutations repeat. Note that since the rust code uses `usize`, overflows for `n > 20` aren't handled. The python implementation is backed by a bigint library and should work correctly for any `n` and `k`.
 
 Rust source code in `src/lib.rs`:
-- `pub fn precompute(n)`: Precompute the prefix permutations up to `n` in $ O(\frac{1}{2}n^3 + n) $ time and $ O(\frac{1}{2} n^2) $ space.
+- `pub fn precompute(n)`: Precompute the prefix permutations up to `n` in $O(\frac{1}{2}n^3 + n)$ time and $O(\frac{1}{2} n^2)$ space.
 - `pub fn unrank_recursive(n,k)`: functional, immutable, slow version
   - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
-- `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm in $ O(\frac{1}{2}n^3) $ time.
+- `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm in $O(\frac{1}{2}n^3)$ time.
   - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
-- `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`, in $ O(\frac{1}{2}n^3 + n) $ time.
+- `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`, in $O(\frac{1}{2}n^3 + n)$ time.
   - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
 - `tests/oeis.rs`: Calculations related to [OEIS A280318](https://oeis.org/A280318) in time less than $O(n!)$
   - `check_oeis_table_5040()`: `a(n)` for an arbitrary `n`.
