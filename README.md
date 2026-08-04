@@ -38,15 +38,18 @@ This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O
 So here are a couple of implementations, based on exploiting the property that the prefix permutations repeat. Note that since the rust code uses `usize`, overflows for `n > 20` aren't handled. The python implementation is backed by a bigint library and should work correctly for any `n` and `k`.
 
 Rust source code in `src/lib.rs`:
-- `pub fn precompute(n)`: Precompute the prefix permutations up to `n` in $O(\frac{1}{2}n^3 + n)$ time and $O(\frac{1}{2} n^2)$ space.
-
 - `pub fn unrank_recursive(n,k)`: functional, immutable, slow version
   - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
+
+- `pub fn unrank_noprecomp(n,k)`: like `unrank(n,k)`, but using `fn precomp_digit(n,i)` **instead of the precomputation table.** See `tests/kat.rs:precompute_kats` for examples.
 
 - `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm in $O(\frac{1}{2}n^3)$ time.
   - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
 
+- `pub fn precompute(n)`: Precompute the prefix permutations up to `n` in $O(\frac{1}{2}n^3 + n)$ time and $O(\frac{1}{2} n^2)$ space. Needed for `unrank(prefixes, n, k)` and `rank(prefixes, permutation)`.
+
 - `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`, in $O(\frac{1}{2}n^3 + n)$ time.
+  - [ ] replacing `reset_permutation()` with `precomp_digit()` ought to be easy, but I haven't done it yet.
   - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
 
 - `tests/oeis.rs`: Calculations related to [OEIS A280318](https://oeis.org/A280318) in time less than $O(n!)$
@@ -60,6 +63,8 @@ The implementations in this repo work on the indices. Whenever you're asked to p
 ## Missing
 
 - What's currently missing from this repo is an efficient algorithm for job splitting, computing either `k` spans or, probably more interesting, factoradic spans to cover $$k \in 0 .. \text{factorial}(n) - 1$$ for a given number of partitions.
+
+- Once we have used unrank() to get a permutation, we also need to recover the internal state used by Heap's algorithm in order to continue the sequence.
 
 ## References
 

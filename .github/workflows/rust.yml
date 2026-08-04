@@ -19,4 +19,4 @@ jobs:
     - name: Build
       run: cargo build --verbose --profile=release
     - name: Run tests
-      run: cargo test --verbose --profile=release
+      run: cargo test --verbose --profile=release && cargo test --verbose

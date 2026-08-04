@@ -43,6 +43,8 @@ mod unittests {
             }
             let k = rng.gen_range(0, factorial_n);
             let perm = unrank(&precomp, n, k);
+            let perm2 = unrank_noprecomp(n, k);
+            assert_eq!(perm, perm2);
             let recovered = rank(&precomp, perm);
             assert_eq!(k, recovered);
         }
@@ -88,21 +90,27 @@ mod unittests {
     fn unrank_matches_output_0_10() {
         // check that unrank() matches the traditional Heap's algorithm's outputs
         // (from the permutohedron crate):
-        let mut _fact: usize = 1;
-        for n in 1..=10 {
-            _fact *= n;
+        //let mut rng = SimpleRng::new();
+        //let mut next_print = rng.gen_range(6_000_000, (u32::MAX as usize) / 50);
+        for n in 1..=10usize {
             let mut data: Vec<u8> = (0..(n as u8)).collect();
             let heap = permutohedron::Heap::new(&mut data);
 
-            let s = precompute(if n > 1 { (n - 1).into() } else { 1usize });
+            let s = precompute(if n > 1 { n - 1 } else { 1usize });
 
             for (k, p) in heap.enumerate() {
                 let ur = unrank(&s, p.len(), k);
+                /* KAT generation:
+                        if k % next_print == 0 {
+                            print!(
+                                "assert_eq!(unrank(&s, {:?}, {k}), {:?}.into());\n",
+                                p.len(),
+                                p
+                            );
+                            next_print = rng.gen_range(6_000_000, (u32::MAX as usize) / 50);
+                        }
+                */
                 assert_eq!(ur, p.into());
-                // KAT generation:
-                //if k > _fact - 3 {
-                //   print!("assert_eq!(unrank(&s, {:?}, {k}), {:?});\n", p.len(), p);
-                //}
             }
         }
     }
@@ -128,6 +136,22 @@ mod unittests {
             assert_eq!(o, f.into());
         })
     }
+
+    #[test]
+    fn noprecompute_n_unrank_test() {
+        // check that unrank and unrank_recursive agree
+        let mut _fact: usize = 1;
+        for n in 1..10 {
+            let s = precompute(n);
+            _fact *= n;
+            for k in 0.._fact - 1 {
+                let f = unrank_noprecomp(n, k);
+                let o = unrank(&s, n, k);
+                assert_eq!(o, f.into());
+            }
+        }
+    }
+
     #[test]
     fn functional_n_unrank_test() {
         // check that unrank and unrank_recursive agree

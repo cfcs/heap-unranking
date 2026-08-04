@@ -17,7 +17,7 @@
 // prefix will hold context-specific elements due to suffix values being swapped in
 // from the suffix.
 #[inline(always)]
-fn reset_permutation(scratch: &mut Vec<u8>, s: &Box<[u8]>, arr: &mut Box<[u8]>) {
+fn reset_permutation(scratch: &mut Vec<u8>, s: &[u8], arr: &mut [u8]) {
     // assert!(scratch.capacity() >= s.len());
 
     // for n <=16 each u8 will be < 16, which means we could use these:
@@ -34,7 +34,7 @@ fn reset_permutation(scratch: &mut Vec<u8>, s: &Box<[u8]>, arr: &mut Box<[u8]>) 
     scratch.extend(s.iter().map(|&p| arr[p as usize]));
     // see kat.rs:precompute_kats:f(), we should probably just use that directly
     // and do away with the precomputation step?
-    arr[0..s.len()].copy_from_slice(&scratch);
+    arr[0..s.len()].copy_from_slice(scratch);
 }
 
 // Precompute final states for each prefix of (excluding) max_n
@@ -73,11 +73,14 @@ pub fn precompute(max_n: usize) -> Vec<Box<[u8]>> {
 //
 pub fn unrank(prefixes: &Vec<Box<[u8]>>, n: usize, mut k: usize) -> Box<[u8]> {
     // Translate k to factoradic digits:
-    let mut qs = vec![0usize; n - 1].into_boxed_slice();
-    for (q, i) in qs.iter_mut().zip(2usize..) {
-        *q = k % i;
-        k /= i;
-    }
+    let qs = (2usize..)
+        .take(n - 1)
+        .map(|i| {
+            let t_q = k % i;
+            k /= i;
+            t_q
+        })
+        .collect::<Box<[_]>>();
 
     let mut scratch: Vec<u8> = Vec::with_capacity(n - 1);
 
@@ -88,18 +91,20 @@ pub fn unrank(prefixes: &Vec<Box<[u8]>>, n: usize, mut k: usize) -> Box<[u8]> {
     // q: qs[n-1] at each step
     // O(n)
     for ((n, prefix), q) in (1..permutation.len())
-        .zip(prefixes.into_iter().take(n - 1))
+        .zip(prefixes.iter().take(n - 1))
         .zip(qs)
         .rev()
     {
         if n & 1 == 0 {
-            for _ in 0..q { // O(n)
+            for _ in 0..q {
+                // O(n)
                 reset_permutation(&mut scratch, &prefix, &mut permutation); // O(n)
                 permutation.swap(0, n); // O(1)
             }
         } else {
             assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
-            for i in 0..q { // O(n)
+            for i in 0..q {
+                // O(n)
                 reset_permutation(&mut scratch, &prefix, &mut permutation); // O(n)
                 permutation.swap(i, n); // O(1)
             }
@@ -115,7 +120,7 @@ pub fn get_qs(n: usize, i: usize, k: usize, acc: Vec<usize>) -> Vec<usize> {
     if n == 1 {
         acc
     } else {
-        let acc2 = vec![k % (i + 1)].into_iter().chain(acc).collect(); // k%i :: acc
+        let acc2 = std::iter::once(k % (i + 1)).chain(acc).collect(); // k%i :: acc
         get_qs(n - 1, i + 1, k / (i + 1), acc2)
     }
 }
@@ -191,6 +196,65 @@ pub fn unrank_recursive(n: usize, k: usize) -> Vec<u8> {
         })
 }
 
+#[inline]
+pub fn precomp_digit(n: usize, i: usize) -> u8 {
+    assert!(i <= n);
+    let nu8 = n as u8;
+    match i as u8 {
+        // n==2: when n==2 is 0 we want to return 1u8
+        0 => nu8 + 2 * (nu8 & 1 | (nu8 <= 2) as u8) - 3,
+        1 if n & 1 == 0 => nu8 - 2,
+        i if i == nu8 - 1 => 0, // last element is always zero
+        i => i + (nu8 & 1) - 1 + 2 * (i == nu8 - 2 && nu8 & 1 == 0) as u8,
+    }
+}
+
+//
+// Like unrank(), but without the precomputation table
+//
+pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
+    // Translate k to factoradic digits:
+    let qs = (2usize..)
+        .take(n - 1)
+        .map(|i| {
+            let t_q = k % i;
+            k /= i;
+            t_q
+        })
+        .collect::<Box<[_]>>();
+
+    let mut scratch: Vec<u8> = Vec::with_capacity(n - 1);
+
+    let mut permutation: Box<[u8]> = (0u8..(n as u8)).collect(); // 0, 1, .., n-1
+
+    // n: from n-1 to 1, step -1  --- (1..permutation.len()) to help the bounds check elision
+    // prefix: &prefixes[n-1] at each step
+    // q: qs[n-1] at each step
+    // O(n)
+    for (n, q) in (1..permutation.len()).zip(qs).rev() {
+        if n & 1 == 0 {
+            for _ in 0..q {
+                // O(n)
+                scratch.clear();
+                scratch.extend((0..n).map(|d| permutation[precomp_digit(n, d) as usize]));
+                permutation[0..n].copy_from_slice(&scratch);
+                permutation.swap(0, n); // O(1)
+            }
+        } else {
+            assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
+            for i in 0..q {
+                // O(n)
+                scratch.clear();
+                scratch.extend((0..n).map(|d| permutation[precomp_digit(n, d) as usize]));
+                permutation[0..n].copy_from_slice(&scratch);
+                permutation.swap(i, n); // O(1)
+            }
+        }
+    }
+
+    permutation
+}
+
 //
 // rank(precompute(), P) computes result k such that unrank(precompute(), k) == P
 // it computes the number of iterations of Heap's algorithm needed
@@ -208,11 +272,12 @@ pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
         .zip(prefixes.iter().zip(permutation.iter().enumerate().skip(1)))
         .rev()
     {
-	// O(n)
+        // O(n)
         let mut q = 0;
         while arr[i] != permutation_i
         /* arr[i] != permutation[i] */
-        { // O(n)
+        {
+            // O(n)
             reset_permutation(&mut scratch, prefix /* &s[i-1] */, &mut arr); // O(n)
             arr.swap((i & 1) * q, i); // O(1)
             q += 1;
