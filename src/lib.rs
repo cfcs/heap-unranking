@@ -226,26 +226,31 @@ pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
     let mut scratch: Vec<u8> = Vec::with_capacity(n - 1);
 
     let mut permutation: Box<[u8]> = (0u8..(n as u8)).collect(); // 0, 1, .., n-1
+    let mut precomped_digits = Vec::with_capacity(n - 1);
 
     // n: from n-1 to 1, step -1  --- (1..permutation.len()) to help the bounds check elision
-    // prefix: &prefixes[n-1] at each step
     // q: qs[n-1] at each step
     // O(n)
     for (n, q) in (1..permutation.len()).zip(qs).rev() {
+        if q == 0 {
+            continue;
+        }
+        precomped_digits.clear();
+        precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
         if n & 1 == 0 {
             for _ in 0..q {
                 // O(n)
                 scratch.clear();
-                scratch.extend((0..n).map(|d| permutation[precomp_digit(n, d) as usize]));
+                scratch.extend(precomped_digits.iter().map(|&d| permutation[d as usize]));
                 permutation[0..n].copy_from_slice(&scratch);
-                permutation.swap(0, n); // O(1)
+                permutation.swap(0, n);
             }
         } else {
             assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
             for i in 0..q {
                 // O(n)
                 scratch.clear();
-                scratch.extend((0..n).map(|d| permutation[precomp_digit(n, d) as usize]));
+                scratch.extend(precomped_digits.iter().map(|&d| permutation[d as usize]));
                 permutation[0..n].copy_from_slice(&scratch);
                 permutation.swap(i, n); // O(1)
             }
