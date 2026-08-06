@@ -7,6 +7,94 @@ mod kat_tests {
     use heap_unranking::*;
 
     #[test]
+    fn precomp_digit_0_1_2() {
+        // [0]
+        assert_eq!(precomp_digit(1, 0), 0);
+        // [1,0]
+        assert_eq!(precomp_digit(2, 0), 1);
+        assert_eq!(precomp_digit(2, 1), 0);
+        // [2,1,0]
+        assert_eq!(precomp_digit(3, 0), 2);
+        assert_eq!(precomp_digit(3, 1), 1);
+        assert_eq!(precomp_digit(3, 2), 0);
+    }
+
+    #[test]
+    fn precomp_digit_even() {
+        // this is the loop var n starting at array length-1
+        for n in [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32] {
+            let origin: Vec<_> = (0..n + 1).collect();
+            let mut permutation1 = origin.clone();
+            let mut permutation2 = origin.clone();
+
+            // how we currently do it per n-loop:
+            {
+                let mut scratch = Vec::with_capacity(n);
+                let mut precomped_digits = Vec::with_capacity(n);
+                precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
+
+                scratch.extend(precomped_digits.iter().map(|&d| permutation1[d as usize]));
+                permutation1[0..n].copy_from_slice(&scratch);
+                permutation1.swap(0, n);
+            }
+            {
+                // for even n >= 4, the pattern we are looking for is something like:
+                // [5, 6,   1, 2, 3, 4,   7,   0]  //  n == 8
+
+                // These will get overwritten:
+                let fst = permutation2[n - 3]; // [5] will get overwritten
+                                               // 5,4,3,2 (when n == 8):
+                for x in (2..n - 2).rev() {
+                    permutation2[x] = permutation2[x - 1];
+                }
+                permutation2[1] = permutation2[n - 2]; // [1] < [6]
+                permutation2[n - 2] = permutation2[n - 1]; // [6] <- [7]
+                permutation2[n - 1] = permutation2[0]; // [7] <- [0]
+                permutation2[0] = permutation2[n];
+                permutation2[n] = fst; // [8] <- [5]
+            }
+            assert_eq!(permutation1, permutation2, "these two methods should match");
+        }
+    }
+
+    #[test]
+    fn precomp_digit_odd() {
+        // this is the loop var n starting at array length-1
+        for n in [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31] {
+            let origin: Vec<_> = (0..n + 1).collect();
+            for i in 0..n {
+                let mut permutation1 = origin.clone();
+                let mut permutation2 = origin.clone();
+
+                // how we currently do it per n-loop:
+                {
+                    let mut scratch = Vec::with_capacity(n);
+                    let mut precomped_digits = Vec::with_capacity(n);
+                    precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
+
+                    scratch.extend(precomped_digits.iter().map(|&d| permutation1[d as usize]));
+                    permutation1[0..n].copy_from_slice(&scratch);
+                    permutation1.swap(i, n);
+                }
+                {
+                    // for even n >= 7, the pattern we are looking for is something like:
+                    // [6,   1, 2, 3, 4, 5,   0]  //  n == 7
+                    //
+                    // Note that the middle section doesn't actually move anything, so all we need is:
+                    //
+                    permutation2.swap(0, n - 1);
+                    permutation2.swap(i, n);
+                }
+                assert_eq!(
+                    permutation1, permutation2,
+                    "i={:?} these two methods should match",
+                    i
+                );
+            }
+        }
+    }
+
+    #[test]
     fn precompute_kats() {
         // Known-answer tests for precompute()
 

@@ -196,9 +196,17 @@ pub fn unrank_recursive(n: usize, k: usize) -> Vec<u8> {
         })
 }
 
+// computes the transpositions for each prefix:
+// for n <= 3:
+//    produces the indices in reverse order: [0], [1,0], [2,1,0]
+// for n >= 4, there are two cases:
+//    n & 1 == 0:
+//    n & 1 == 1:
+// more details in tests/kat.rs
+//
 #[inline]
 pub fn precomp_digit(n: usize, i: usize) -> u8 {
-    assert!(i <= n);
+    // assert!(i <= n);
     let nu8 = n as u8;
     match i as u8 {
         // n==2: when n==2 is 0 we want to return 1u8
@@ -235,11 +243,11 @@ pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
         if q == 0 {
             continue;
         }
-        precomped_digits.clear();
-        precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
         if n & 1 == 0 {
+            precomped_digits.clear();
+            precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
             for _ in 0..q {
-                // O(n)
+                // O(n), see kats.rs:precomp_digit_even()
                 scratch.clear();
                 scratch.extend(precomped_digits.iter().map(|&d| permutation[d as usize]));
                 permutation[0..n].copy_from_slice(&scratch);
@@ -248,11 +256,9 @@ pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
         } else {
             assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
             for i in 0..q {
-                // O(n)
-                scratch.clear();
-                scratch.extend(precomped_digits.iter().map(|&d| permutation[d as usize]));
-                permutation[0..n].copy_from_slice(&scratch);
-                permutation.swap(i, n); // O(1)
+                // O(1)
+                permutation.swap(0, n - 1);
+                permutation.swap(i, n);
             }
         }
     }
