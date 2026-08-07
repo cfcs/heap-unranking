@@ -41,7 +41,7 @@ Rust source code in `src/lib.rs`:
 - `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm in $O(\frac{1}{2}n^3)$ time.
   - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
 
-- `pub fn unrank_noprecomp(n,k)`: like `unrank(n,k)`, but using `fn precomp_digit(n,i)` **instead of the precomputation table.** See `tests/kat.rs:precompute_kats` for examples. This runs in $O(\frac{1}{2}n^2)$ time with $O(n)$ memory.
+- `pub fn unrank_noprecomp(n,k)`: like `unrank(n,k)`, but using `fn precomp_digit(n,i)` **instead of the precomputation table.** See `tests/kat.rs:precompute_kats` for examples. This runs in $O(\frac{1}{2}n^2)$ time with $O(3n)$ memory.
 
 - `pub fn unrank_recursive(n,k)`: functional, immutable, slow version of `unrank()`
   - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
@@ -52,6 +52,7 @@ Rust source code in `src/lib.rs`:
 
 - `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`, in $O(\frac{1}{2}n^3 + n)$ time.
   - [ ] replacing `reset_permutation()` with `precomp_digit()` ought to be easy, but I haven't done it yet.
+    - Should also use the same trick as in `unrank_precomp()` and see if we can get this to run in $O(n^2)$ too.
   - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
 
 - `tests/oeis.rs`: Calculations related to [OEIS A280318](https://oeis.org/A280318) in time less than $O(n!)$

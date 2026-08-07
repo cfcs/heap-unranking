@@ -147,7 +147,7 @@ mod unittests {
             for k in 0.._fact - 1 {
                 let f = unrank_noprecomp(n, k);
                 let o = unrank(&s, n, k);
-                assert_eq!(o, f.into());
+                assert_eq!(o, f.into(), "n={n} k={n}");
             }
         }
     }

@@ -218,66 +218,70 @@ pub fn precomp_digit(n: usize, i: usize) -> u8 {
 }
 
 //
-// Like unrank(), but without the precomputation table
+// Like unrank(), but without the precomputation table.
+// Runtime: O(n^2)
 //
 pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
     // Translate k to factoradic digits:
-    let qs = (2usize..)
+    let qs: Box<[usize]> = (2usize..)
         .take(n - 1)
         .map(|i| {
             let t_q = k % i;
             k /= i;
             t_q
         })
-        .collect::<Box<[_]>>();
+        .collect();
 
     let mut permutation: Box<[u8]> = (0u8..(n as u8)).collect(); // 0, 1, .., n-1
 
-    let mut even_tmp: Vec<u8> = Vec::with_capacity(n);
+    let mut even_tmp: Vec<u8> = Vec::with_capacity(n + 1);
 
     // n: from n-1 to 1, step -1  --- (1..permutation.len()) to help the bounds check elision
     // q: qs[n-1] at each step
     // O(0.5 n) -> O(n), the 0.5 comes from the inner n's being sum(1, 2, .. n)
-    for (n, q) in (1..permutation.len()).zip(qs).rev() {
-        if q == 0 {
-            continue;
-        }
+    for (n, q) in (1..permutation.len())
+        .zip(qs)
+        .rev()
+        .filter(|(_, q)| *q != 0)
+    {
         if n & 1 == 0 {
-            if n == 2 {
-                // O(1)
+            if n < 4 {
+                // special case for n == 2; 0 < q <= 2, so there are only the odd/even cases:
                 permutation.swap(0, 1 + (q & 1));
                 permutation.swap(1, 2);
-            } else {
-                // O(q) -> O(n)
-                // for even n >= 4, we can do the q rotations linearly like this, which is equivalent to
-                // for _ in q { reset_permutation(); permutation.swap(0, n); }:
-                even_tmp.clear();
-                let order = [0usize, n - 1, n - 2]
-                    .into_iter()
-                    .chain(1..=n - 3)
-                    .chain(std::iter::once(n));
-                even_tmp.extend(order.clone().map(|i| permutation[i]));
-                assert!(q < n + 1);
-                assert_eq!(even_tmp.len(), n + 1);
-                order
-                    .zip(
-                        even_tmp
-                            .iter()
-                            .skip(n + 1 - q)
-                            .chain(even_tmp.iter().take(n + 1 - q))
-                            .copied(),
-                    )
-                    .for_each(|(newidx, even_tmp_entry)| {
-                        // <- even_tmp[(j + (n+1) - q) % (n+1)];
-                        permutation[newidx] = even_tmp_entry;
-                    });
+                continue;
             }
+            // for even n, we can do the q rotations and swaps linearly like this,
+            // which is equivalent to:
+            // for _ in q { reset_permutation(); permutation.swap(0, n); }:
+            even_tmp.clear();
+            even_tmp.push(permutation[0]);
+            even_tmp.push(permutation[n - 1]);
+            even_tmp.push(permutation[n - 2]);
+            even_tmp.extend_from_slice(&permutation[1..n - 2]);
+            even_tmp.push(permutation[n]);
+
+            permutation[0] = even_tmp[even_tmp.len() - q];
+            permutation[n] = even_tmp[n - q];
+            permutation[n - 1] =
+                even_tmp[even_tmp.len() + 1 - q - even_tmp.len() * (1 == q) as usize];
+            permutation[n - 2] =
+                even_tmp[even_tmp.len() + 2 - q - even_tmp.len() * (q <= 2) as usize];
+
+            let start = even_tmp.len() + 3 - q - even_tmp.len() * (q <= 3) as usize;
+            let pivot = (even_tmp.len() - start).min(n - 3);
+
+            permutation[1..=pivot].copy_from_slice(&even_tmp[start..start + pivot]);
+            permutation[1 + pivot..n - 2].copy_from_slice(&even_tmp[..n - 3 - pivot]);
         } else {
             assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
-            for i in 0..q {
-                // O(1), q times -> O(q) -> O(n)
-                permutation.swap(0, n - 1);
+            permutation.swap(0, n - 1);
+            permutation.swap(0, n);
+            for i in 1..q {
                 permutation.swap(i, n);
+            }
+            if q & 1 == 0 {
+                permutation.swap(0, n - 1);
             }
         }
     }
