@@ -29,7 +29,7 @@ This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O
 
 3. It is perhaps also worth mentioning that fewer than $n-1$ prefixes are needed for small $k$; for example $k = 0$ does not make use of the prefix-enabled skipping.
 
-4. It [seems likely](https://github.com/cfcs/heap-unranking/pull/1) that there exists a trade-off spectrum between the size of the prefix table and the runtime complexity per `rank()`/`unrank()` that yields an $O(n^2)$ implementation, at the cost of an $O(n^3)$ *space* to store multiple prefixes to cache each of the the "jumps" for each factoradic digit value. Storing a fraction of these (say half of them, or $\log{n}$ of them), can then be balanced to a sliding scale like $O(n^2 \log{n})$ runtime + space.
+4. **Update Aug 2026:** `unrank_noprecomp()` runs in $O(\frac{1}{2}n^2)$ time without the precomputations by unrolling the transformations performed by the precomputation tables.
 
 5. See `tests/kat.rs:precompute_kats()` for an alternative solution that trades the need for prefix tables for more processing per `unrank`/`rank`.
 
@@ -38,13 +38,15 @@ This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O
 So here are a couple of implementations, based on exploiting the property that the prefix permutations repeat. Note that since the rust code uses `usize`, overflows for `n > 20` aren't handled. The python implementation is backed by a bigint library and should work correctly for any `n` and `k`.
 
 Rust source code in `src/lib.rs`:
-- `pub fn unrank_recursive(n,k)`: functional, immutable, slow version
-  - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
-
-- `pub fn unrank_noprecomp(n,k)`: like `unrank(n,k)`, but using `fn precomp_digit(n,i)` **instead of the precomputation table.** See `tests/kat.rs:precompute_kats` for examples.
-
 - `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm in $O(\frac{1}{2}n^3)$ time.
   - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
+
+- `pub fn unrank_noprecomp(n,k)`: like `unrank(n,k)`, but using `fn precomp_digit(n,i)` **instead of the precomputation table.** See `tests/kat.rs:precompute_kats` for examples. This runs in $O(\frac{1}{2}n^2)$ time with $O(n)$ memory.
+
+- `pub fn unrank_recursive(n,k)`: functional, immutable, slow version of `unrank()`
+  - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
+
+
 
 - `pub fn precompute(n)`: Precompute the prefix permutations up to `n` in $O(\frac{1}{2}n^3 + n)$ time and $O(\frac{1}{2} n^2)$ space. Needed for `unrank(prefixes, n, k)` and `rank(prefixes, permutation)`.
 

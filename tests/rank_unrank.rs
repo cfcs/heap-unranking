@@ -141,7 +141,7 @@ mod unittests {
     fn noprecompute_n_unrank_test() {
         // check that unrank and unrank_recursive agree
         let mut _fact: usize = 1;
-        for n in 1..10 {
+        for n in 1..11 {
             let s = precompute(n);
             _fact *= n;
             for k in 0.._fact - 1 {

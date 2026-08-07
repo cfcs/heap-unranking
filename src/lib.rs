@@ -231,32 +231,51 @@ pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
         })
         .collect::<Box<[_]>>();
 
-    let mut scratch: Vec<u8> = Vec::with_capacity(n - 1);
-
     let mut permutation: Box<[u8]> = (0u8..(n as u8)).collect(); // 0, 1, .., n-1
-    let mut precomped_digits = Vec::with_capacity(n - 1);
+
+    let mut even_tmp: Vec<u8> = Vec::with_capacity(n);
 
     // n: from n-1 to 1, step -1  --- (1..permutation.len()) to help the bounds check elision
     // q: qs[n-1] at each step
-    // O(n)
+    // O(0.5 n) -> O(n), the 0.5 comes from the inner n's being sum(1, 2, .. n)
     for (n, q) in (1..permutation.len()).zip(qs).rev() {
         if q == 0 {
             continue;
         }
         if n & 1 == 0 {
-            precomped_digits.clear();
-            precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
-            for _ in 0..q {
-                // O(n), see kats.rs:precomp_digit_even()
-                scratch.clear();
-                scratch.extend(precomped_digits.iter().map(|&d| permutation[d as usize]));
-                permutation[0..n].copy_from_slice(&scratch);
-                permutation.swap(0, n);
+            if n == 2 {
+                // O(1)
+                permutation.swap(0, 1 + (q & 1));
+                permutation.swap(1, 2);
+            } else {
+                // O(q) -> O(n)
+                // for even n >= 4, we can do the q rotations linearly like this, which is equivalent to
+                // for _ in q { reset_permutation(); permutation.swap(0, n); }:
+                even_tmp.clear();
+                let order = [0usize, n - 1, n - 2]
+                    .into_iter()
+                    .chain(1..=n - 3)
+                    .chain(std::iter::once(n));
+                even_tmp.extend(order.clone().map(|i| permutation[i]));
+                assert!(q < n + 1);
+                assert_eq!(even_tmp.len(), n + 1);
+                order
+                    .zip(
+                        even_tmp
+                            .iter()
+                            .skip(n + 1 - q)
+                            .chain(even_tmp.iter().take(n + 1 - q))
+                            .copied(),
+                    )
+                    .for_each(|(newidx, even_tmp_entry)| {
+                        // <- even_tmp[(j + (n+1) - q) % (n+1)];
+                        permutation[newidx] = even_tmp_entry;
+                    });
             }
         } else {
             assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
             for i in 0..q {
-                // O(1)
+                // O(1), q times -> O(q) -> O(n)
                 permutation.swap(0, n - 1);
                 permutation.swap(i, n);
             }
