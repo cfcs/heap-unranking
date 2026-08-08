@@ -33,7 +33,7 @@ mod unittests {
         let mut rng = SimpleRng::new();
         let precomp = precompute(21);
         for _ in 0..100000 {
-            let n = rng.gen_range(3, 22);
+            let n = rng.gen_range(2, 22);
             let mut factorial_n: usize = 1;
             for i in 2..=n {
                 match factorial_n.checked_mul(i) {
@@ -45,6 +45,8 @@ mod unittests {
             let perm = unrank(&precomp, n, k);
             let perm2 = unrank_noprecomp(n, k);
             assert_eq!(perm, perm2);
+            let recovered2 = rank_noprecomp(&perm);
+            assert_eq!(k, recovered2);
             let recovered = rank(&precomp, perm);
             assert_eq!(k, recovered);
         }
@@ -55,6 +57,8 @@ mod unittests {
         // Check we can recover the usize::MAX for n=21 (where 21! overflows it)
         let s = precompute(20);
         let perm = unrank(&s, 21, usize::MAX);
+        let k2 = rank_noprecomp(&perm);
+        assert_eq!(usize::MAX, k2);
         let k = rank(&s, perm);
         assert_eq!(usize::MAX, k);
     }
@@ -63,6 +67,8 @@ mod unittests {
     fn test_precompute23() {
         let s = precompute(2);
         let perm = unrank(&s, 3, 5);
+        let k2 = rank_noprecomp(&perm);
+        assert_eq!(5, k2);
         let k = rank(&s, perm);
         assert_eq!(5, k);
     }
@@ -82,8 +88,10 @@ mod unittests {
         // prefixes:
         let s = precompute(2);
         let perm = unrank(&s, 4, 6);
-        let k = rank(&s, perm);
+        let k = rank(&s, perm.clone());
         assert_eq!(6, k);
+        let k2 = rank_noprecomp(&perm);
+        assert_eq!(6, k2);
     }
 
     #[test]
@@ -111,6 +119,20 @@ mod unittests {
                         }
                 */
                 assert_eq!(ur, p.into());
+            }
+        }
+    }
+
+    #[test]
+    fn rank_noprecomp_matches_output_0_10() {
+        // check that rank_noprecomp() matches the traditional Heap's algorithm's
+        // outputs (from the permutohedron crate):
+        for n in 2..=10usize {
+            let mut data: Vec<u8> = (0..(n as u8)).collect();
+            let heap = permutohedron::Heap::new(&mut data);
+            for (k, p) in heap.enumerate() {
+                let k2 = rank_noprecomp(&p);
+                assert_eq!(k, k2, "rank_noprecomp({:?}) == {k}", p);
             }
         }
     }

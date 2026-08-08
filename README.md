@@ -55,6 +55,8 @@ Rust source code in `src/lib.rs`:
     - Should also use the same trick as in `unrank_precomp()` and see if we can get this to run in $O(n^2)$ too.
   - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
 
+- `pub fn rank_noprecomp(permutation)`: return `k` such that `permutation == unrank(permutation.len(),k)`, in $O(\frac{1}{2}n^3$. Without precomputed prefix tables.
+
 - `tests/oeis.rs`: Calculations related to [OEIS A280318](https://oeis.org/A280318) in time less than $O(n!)$
   - `check_oeis_table_5040()`: `a(n)` for an arbitrary `n`.
   - `rank_example_for_n_4()`: Finding `n` given `a(n)`, using `rank()`.

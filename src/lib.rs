@@ -330,3 +330,46 @@ pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
 
     k
 }
+
+//
+// Rank a permutation
+// Runtime: O(n^3)
+//
+pub fn rank_noprecomp(permutation: &[u8]) -> usize {
+    let mut arr: Box<[u8]> = (0u8..(permutation.len() as u8)).collect();
+    let mut scratch = Vec::with_capacity(permutation.len() - 1);
+    let mut qs = vec![0; permutation.len() - 1].into_boxed_slice();
+    let mut precomped_digits = Vec::with_capacity(permutation.len() - 1);
+    for (qq, (i, &permutation_i)) in qs
+        .iter_mut()
+        .zip(permutation.iter().enumerate().skip(1))
+        .rev()
+    {
+        // O(n)
+        let mut q = 0;
+        precomped_digits.clear();
+        precomped_digits.extend((0..i).map(|d| precomp_digit(i, d)));
+        while arr[i] != permutation_i
+        /* arr[i] != permutation[i] */
+        {
+            // O(n)
+            scratch.clear();
+            scratch.extend(precomped_digits.iter().map(|&d| arr[d as usize]));
+            arr[0..i].copy_from_slice(&scratch); // O(n)
+            arr.swap((i & 1) * q, i); // O(1)
+            q += 1;
+        }
+        *qq = q; // qs[i-1] = q;
+    }
+
+    // O(n)
+    let mut k: usize = qs[0];
+    let mut fact_i = 1;
+    for (i, q) in qs.iter().enumerate().skip(1) {
+        // TODO this can overflow if factorial(permutation.len()) > usize::MAX
+        fact_i *= i + 1;
+        k += q * fact_i; // k is < factorial(permutation.len())
+    }
+
+    k
+}
