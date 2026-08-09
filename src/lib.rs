@@ -218,6 +218,56 @@ pub fn precomp_digit(n: usize, i: usize) -> u8 {
 }
 
 //
+// The inner body of the loop to advance by a factorial digit q in O(n).
+// Equivalent to the O(n^2) version:
+//   for 0..q {
+//     reset_permutation(&mut scratch, &s[n - 1], &mut permutation);
+//     arr.swap(q * (n & 1), n);
+//   }
+//
+#[inline]
+fn forward_by_q(n: usize, q: usize, even_tmp: &mut Vec<u8>, permutation: &mut [u8]) {
+    if n & 1 == 0 {
+        if n < 4 {
+            // special case for n == 2; 0 < q <= 2, so there are only the odd/even cases:
+            permutation.swap(0, 1 + (q & 1));
+            permutation.swap(1, 2);
+            return;
+        }
+        // for even n, we can do the q rotations and swaps linearly like this,
+        // which is equivalent to:
+        // for _ in q { reset_permutation(); permutation.swap(0, n); }:
+        even_tmp.clear();
+        even_tmp.push(permutation[0]);
+        even_tmp.push(permutation[n - 1]);
+        even_tmp.push(permutation[n - 2]);
+        even_tmp.extend_from_slice(&permutation[1..n - 2]);
+        even_tmp.push(permutation[n]);
+
+        permutation[0] = even_tmp[even_tmp.len() - q];
+        permutation[n] = even_tmp[n - q];
+        permutation[n - 1] = even_tmp[even_tmp.len() + 1 - q - even_tmp.len() * (1 == q) as usize];
+        permutation[n - 2] = even_tmp[even_tmp.len() + 2 - q - even_tmp.len() * (q <= 2) as usize];
+
+        let start = even_tmp.len() + 3 - q - even_tmp.len() * (q <= 3) as usize;
+        let pivot = (even_tmp.len() - start).min(n - 3);
+
+        permutation[1..=pivot].copy_from_slice(&even_tmp[start..start + pivot]);
+        permutation[1 + pivot..n - 2].copy_from_slice(&even_tmp[..n - 3 - pivot]);
+    } else {
+        assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
+        permutation.swap(0, n - 1);
+        permutation.swap(0, n);
+        for i in 1..q {
+            permutation.swap(i, n);
+        }
+        if q & 1 == 0 {
+            permutation.swap(0, n - 1);
+        }
+    }
+}
+
+//
 // Like unrank(), but without the precomputation table.
 // Runtime: O(n^2)
 //
@@ -244,46 +294,7 @@ pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
         .rev()
         .filter(|(_, q)| *q != 0)
     {
-        if n & 1 == 0 {
-            if n < 4 {
-                // special case for n == 2; 0 < q <= 2, so there are only the odd/even cases:
-                permutation.swap(0, 1 + (q & 1));
-                permutation.swap(1, 2);
-                continue;
-            }
-            // for even n, we can do the q rotations and swaps linearly like this,
-            // which is equivalent to:
-            // for _ in q { reset_permutation(); permutation.swap(0, n); }:
-            even_tmp.clear();
-            even_tmp.push(permutation[0]);
-            even_tmp.push(permutation[n - 1]);
-            even_tmp.push(permutation[n - 2]);
-            even_tmp.extend_from_slice(&permutation[1..n - 2]);
-            even_tmp.push(permutation[n]);
-
-            permutation[0] = even_tmp[even_tmp.len() - q];
-            permutation[n] = even_tmp[n - q];
-            permutation[n - 1] =
-                even_tmp[even_tmp.len() + 1 - q - even_tmp.len() * (1 == q) as usize];
-            permutation[n - 2] =
-                even_tmp[even_tmp.len() + 2 - q - even_tmp.len() * (q <= 2) as usize];
-
-            let start = even_tmp.len() + 3 - q - even_tmp.len() * (q <= 3) as usize;
-            let pivot = (even_tmp.len() - start).min(n - 3);
-
-            permutation[1..=pivot].copy_from_slice(&even_tmp[start..start + pivot]);
-            permutation[1 + pivot..n - 2].copy_from_slice(&even_tmp[..n - 3 - pivot]);
-        } else {
-            assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
-            permutation.swap(0, n - 1);
-            permutation.swap(0, n);
-            for i in 1..q {
-                permutation.swap(i, n);
-            }
-            if q & 1 == 0 {
-                permutation.swap(0, n - 1);
-            }
-        }
+        forward_by_q(n, q, &mut even_tmp, &mut permutation);
     }
 
     permutation
@@ -297,6 +308,9 @@ pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
 //          Best case: n+n -> O(n)
 //
 pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
+    if permutation.len() <= 1 {
+        return 0;
+    }
     let mut arr: Box<[u8]> = (0u8..(permutation.len() as u8)).collect();
     let mut scratch = Vec::with_capacity(permutation.len() - 1);
     let mut qs = vec![0; permutation.len() - 1].into_boxed_slice();
@@ -333,33 +347,69 @@ pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
 
 //
 // Rank a permutation
-// Runtime: O(n^3)
+// Runtime: O(0.5n^3)
 //
 pub fn rank_noprecomp(permutation: &[u8]) -> usize {
+    if permutation.len() <= 1 {
+        return 0;
+    }
     let mut arr: Box<[u8]> = (0u8..(permutation.len() as u8)).collect();
-    let mut scratch = Vec::with_capacity(permutation.len() - 1);
     let mut qs = vec![0; permutation.len() - 1].into_boxed_slice();
-    let mut precomped_digits = Vec::with_capacity(permutation.len() - 1);
+    let mut even_tmp: Vec<u8> = Vec::with_capacity(permutation.len() + 1); // TODO
     for (qq, (i, &permutation_i)) in qs
         .iter_mut()
         .zip(permutation.iter().enumerate().skip(1))
         .rev()
     {
         // O(n)
-        let mut q = 0;
-        precomped_digits.clear();
-        precomped_digits.extend((0..i).map(|d| precomp_digit(i, d)));
-        while arr[i] != permutation_i
-        /* arr[i] != permutation[i] */
-        {
-            // O(n)
-            scratch.clear();
-            scratch.extend(precomped_digits.iter().map(|&d| arr[d as usize]));
-            arr[0..i].copy_from_slice(&scratch); // O(n)
-            arr.swap((i & 1) * q, i); // O(1)
-            q += 1;
+        if arr[i] == permutation_i {
+            // no swaps required to make 0..=i have a suffix of permutation[i]
+            continue; // q:=0; O(1) -> O((1/n)0.5n)
         }
-        *qq = q; // qs[i-1] = q;
+        if arr[0] == permutation_i {
+            *qq = i; // q:=i; when arr[0] == permutation[i]
+            forward_by_q(i, i, &mut even_tmp, &mut arr); // O(n) -> O((1/n)0.5n^2)
+            continue;
+        }
+        if i == 2 && arr[1] == permutation_i {
+            *qq = 1;
+            arr.swap(1, i);
+            arr.swap(0, 1);
+            continue;
+        }
+        // Above we have handled i=1, i=2, and 2/n of the other cases.
+
+        let mut q = 0;
+        // now we know:
+        //   { q > 0 } (that is, it will be)
+        //   { i >= 3}
+        //   { arr[i] != permutation[i] }
+        //   { arr[0] != permutation[i] }
+        while permutation_i != arr[i] {
+            // stupid bruteforce loop, this scales poorly but does work for all cases:
+            // O(n)
+            // depending on mod 2:
+            // if the target is in the first place, we need one swap from the beginning
+            // if the target is right next to it we need the (i,n) swap
+            //   (which incurs the (0,n) swapping too) in some cases
+            forward_by_q(i, 1, &mut even_tmp, &mut arr); // O(n)
+            if (i & 1) * q > 0 {
+                arr.swap(i, q);
+                arr.swap(0, q);
+            }
+            q += 1;
+            /*
+            Alternatively:
+            // precomped_digits.extend((0..i).map(|d| precomp_digit(i, d)));
+                scratch.clear();
+                scratch.extend(precomped_digits.iter().map(|&d| arr[d as usize]));
+                arr[0..i].copy_from_slice(&scratch); // O(n)
+                arr.swap((i & 1) * q, i); // O(1)
+            */
+        }
+        //println!("FOUND {:?} {i} {permutation_i}: q:={q}", arr);
+        *qq = q;
+        continue;
     }
 
     // O(n)

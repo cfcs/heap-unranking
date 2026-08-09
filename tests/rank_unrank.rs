@@ -27,7 +27,35 @@ mod unittests {
             let range = max - min;
             min + (self.next() % range)
         }
+
+        fn fisher_yates_shuffle_u8(&mut self, v: &mut Box<[u8]>) {
+            let mut i = v.len();
+            while i > 1 {
+                let j = self.gen_range(0, i);
+                i -= 1;
+                v.swap(i, j);
+            }
+        }
     }
+
+    #[test]
+    fn test_rankings() {
+        // check that the ranking functions are internally consistent
+        let mut rng = SimpleRng::new();
+        let precomp = precompute(21);
+        for n in 1..21 {
+            for _ in 0..=((1..=n).product::<usize>().min(n * n * 2_000)) {
+                let mut arr: Box<[u8]> = (0..n as u8).collect();
+                rng.fisher_yates_shuffle_u8(&mut arr);
+                let k = rank_noprecomp(&arr);
+                let sanity_check = unrank_noprecomp(n, k);
+                assert_eq!(arr, sanity_check);
+                let k2 = rank(&precomp, arr);
+                assert_eq!(k, k2);
+            }
+        }
+    }
+
     #[test]
     fn unrank_rank_random_k() {
         let mut rng = SimpleRng::new();
@@ -124,7 +152,7 @@ mod unittests {
     }
 
     #[test]
-    fn rank_noprecomp_matches_output_0_10() {
+    fn test_rank_noprecomp_matches_output_0_10() {
         // check that rank_noprecomp() matches the traditional Heap's algorithm's
         // outputs (from the permutohedron crate):
         for n in 2..=10usize {
@@ -133,6 +161,7 @@ mod unittests {
             for (k, p) in heap.enumerate() {
                 let k2 = rank_noprecomp(&p);
                 assert_eq!(k, k2, "rank_noprecomp({:?}) == {k}", p);
+                //println!("PASSED: {k2} for n={n}");
             }
         }
     }
