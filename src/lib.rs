@@ -347,7 +347,7 @@ pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
 
 //
 // Rank a permutation
-// Runtime: O(0.5n^3)
+// Runtime: O(n^2), amortized with word operations
 //
 pub fn rank_noprecomp(permutation: &[u8]) -> usize {
     if permutation.len() <= 1 {
@@ -362,6 +362,8 @@ pub fn rank_noprecomp(permutation: &[u8]) -> usize {
         .rev()
     {
         // O(n)
+
+        // fast-track heuristics:
         if arr[i] == permutation_i {
             // no swaps required to make 0..=i have a suffix of permutation[i]
             continue; // q:=0; O(1) -> O((1/n)0.5n)
@@ -372,44 +374,130 @@ pub fn rank_noprecomp(permutation: &[u8]) -> usize {
             continue;
         }
         if i == 2 && arr[1] == permutation_i {
-            *qq = 1;
+            *qq = 1; // special case for len 3 not covered by the two rules above
             arr.swap(1, i);
             arr.swap(0, 1);
             continue;
         }
-        // Above we have handled i=1, i=2, and 2/n of the other cases.
 
-        let mut q = 0;
-        // now we know:
-        //   { q > 0 } (that is, it will be)
-        //   { i >= 3}
-        //   { arr[i] != permutation[i] }
-        //   { arr[0] != permutation[i] }
-        while permutation_i != arr[i] {
-            // stupid bruteforce loop, this scales poorly but does work for all cases:
-            // O(n)
-            // depending on mod 2:
-            // if the target is in the first place, we need one swap from the beginning
-            // if the target is right next to it we need the (i,n) swap
-            //   (which incurs the (0,n) swapping too) in some cases
-            forward_by_q(i, 1, &mut even_tmp, &mut arr); // O(n)
-            if (i & 1) * q > 0 {
-                arr.swap(i, q);
-                arr.swap(0, q);
+        if true {
+            // these are interesting observations that seem to hold, but I have not
+            // managed to pin down the argument for why they work. It feels like
+            // there is a rule that would let us generalize these to odd/even cases.
+            let idx = arr.iter().position(|&x| x == permutation_i).unwrap();
+            assert!(idx > 0); // idx can't be 0 (handled above)
+            assert!(idx < i); // // idx can't be i (handled above)
+            if true && i == 3 {
+                *qq = i - idx; // { idx != i -> 3-idx != 0}
+                assert_ne!(*qq, 0);
+                forward_by_q(i, *qq, &mut even_tmp, &mut arr);
+                continue;
             }
-            q += 1;
-            /*
-            Alternatively:
-            // precomped_digits.extend((0..i).map(|d| precomp_digit(i, d)));
-                scratch.clear();
-                scratch.extend(precomped_digits.iter().map(|&d| arr[d as usize]));
-                arr[0..i].copy_from_slice(&scratch); // O(n)
-                arr.swap((i & 1) * q, i); // O(1)
-            */
+            if true && i == 4 {
+                *qq = idx;
+                forward_by_q(i, *qq, &mut even_tmp, &mut arr);
+                continue;
+            }
+            // Above we have handled i=[1,2,3,4] and 2/n of the other cases.
         }
-        //println!("FOUND {:?} {i} {permutation_i}: q:={q}", arr);
-        *qq = q;
-        continue;
+
+        if (i & 1) == 1 {
+            // unrolled version of forward_by_q(i, 1, &mut even_tmp, &mut arr);
+            // for the odd case we only do a constant number of swaps, making
+            // the the total complexity of the inner loop (0.5n * 0.5n) -> O(\frac{1}{4}n^2)
+            arr.swap(0, i - 1);
+            arr.swap(0, i);
+            for q in 1..i {
+                // from 1 to i-1
+                if permutation_i == arr[i] {
+                    *qq = q;
+                    break;
+                }
+                // The four swaps we are left with cancel out to two:
+                // arr.swap(0, i - 1);
+                // arr.swap(0, i); arr.swap(i, q); arr.swap(0, q);
+                // -> arr.swap(i, q); arr.swap(0,q); arr.swap(0,q); -> arr.swap(i, q)
+                arr.swap(0, i - 1);
+                arr.swap(i, q);
+            }
+            debug_assert_ne!(*qq, 0); // we should always be able to find it
+            continue;
+        } else {
+            // we have now established these pre-conditions:
+            //   { q > 0 } (that is, it will be)
+            //   { i >= 4 }
+            //   { i & 1 == 0 -> i is even }
+            //   { arr[i] != permutation[i] }
+            //   { arr[0] != permutation[i] }
+
+            let mut q = 0;
+            let mut bmap = 0u32;
+            for (xi, &xv) in arr.iter().enumerate() {
+                bmap |= ((xv == permutation_i) as u32) << xi;
+            }
+            // It is worth noting that below the only operation we perform that involves
+            // the elements of even_tmp / permutation_i is comparing whether or not a given element
+            // is equal to permutation_i or not, so I used a bitmap below to amortize the O(n^2)
+            // looping over forward_by_q() for the even `i`s, arriving at this
+            // [amortized] O(n) solution. First we use the bitmap version of forward_by_q, tracking
+            // only the permutation[i], and we use that to find `q`.
+            for _ in 1..i {
+                // for q in 1..i
+                if bmap & (1 << i) != 0 {
+                    break;
+                } // if permutation_i == tmp[i]
+                q += 1;
+                if bmap & (1 << (i - 1)) != 0
+                /* tmp[i - 1] == permutation_i*/
+                {
+                    /* Essentially, if tmp[i-1] == permutation_i:
+                            tmp[i - 2] = tmp[i - 1];
+                            tmp[i - 1] = u8::MAX; // we don't want this to remain permutation_i
+                    */
+                    bmap |= 1 << (i - 2);
+                    bmap &= !(1 << (i - 1));
+                    continue;
+                }
+                bmap |= (bmap & 1) << (i - 1); // set [i-1] if bmap[0] is set, can continue if rhs!=0
+
+                // emap is what we call even_tmp in the forward_by_q()
+                let mut emap = bmap & 1; // [0]:=tmp[0]
+                emap |= (1 << 1) & ((bmap >> (i - 1)) << 1); // [1]:=tmp[i-1]
+                emap |= (1 << 2) & ((bmap >> (i - 2)) << 2); // [2]:=tmp[i-2]
+                emap |= ((bmap & ((1 << (i - 2)) - 1)) >> 1) << 3; // [3..] = tmp[1..i-2]
+                emap |= ((bmap >> i) & 1) << ((i - 2) - 1 + 3);
+
+                bmap |= (emap & (1 << (i - 1))) << 1; // set [i] if even_tmp[i-1] is set.
+                                                      //CAN continue; if rhs!=0
+
+                bmap |= (emap & (1 << i)) >> i; // set bmap[0] if even_tmp[i] == permutation_i
+                                                // CAN: continue; if rhs != 0
+
+                let pivot = i - 3; //(i -1).min(i - 3); but we have {i >= 4} above.
+
+                let esuffix = (emap >> 2) & ((1 << pivot) - 1);
+                bmap |= (((!bmap) >> 1) & esuffix) << 1; // secondcopy_from_slice(even_tmp, ..n)
+            }
+            // Having established `q` we can now advance the prefix permutation by `q` in O(n)
+            // in order to prepare &arr for the next loop iteration:
+            forward_by_q(i, q, &mut even_tmp, &mut arr);
+            *qq = q;
+            continue;
+        }
+        /* Alternatively (for both even and off cases):
+           while permutation_i != arr[i] {
+             forward_by_q(i, 1, &mut even_tmp, &mut arr); // O(n)
+            if (i & 1) * q > 0 { arr.swap(i, q); arr.swap(0, q); }
+           }
+        */
+        /* Alternatively:
+           // precomped_digits.extend((0..i).map(|d| precomp_digit(i, d)));
+               scratch.clear();
+               scratch.extend(precomped_digits.iter().map(|&d| arr[d as usize]));
+               arr[0..i].copy_from_slice(&scratch); // O(n)
+               arr.swap((i & 1) *q, i);
+               q += 1
+        */
     }
 
     // O(n)

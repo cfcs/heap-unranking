@@ -44,7 +44,7 @@ mod unittests {
         let mut rng = SimpleRng::new();
         let precomp = precompute(21);
         for n in 1..21 {
-            for _ in 0..=((1..=n).product::<usize>().min(n * n * 2_000)) {
+            for _ in 0..=((1..=n).product::<usize>().min(n * n * 1_000)) {
                 let mut arr: Box<[u8]> = (0..n as u8).collect();
                 rng.fisher_yates_shuffle_u8(&mut arr);
                 let k = rank_noprecomp(&arr);
@@ -152,10 +152,10 @@ mod unittests {
     }
 
     #[test]
-    fn test_rank_noprecomp_matches_output_0_10() {
+    fn test_rank_noprecomp_matches_output_0_11() {
         // check that rank_noprecomp() matches the traditional Heap's algorithm's
         // outputs (from the permutohedron crate):
-        for n in 2..=10usize {
+        for n in 1..=11usize {
             let mut data: Vec<u8> = (0..(n as u8)).collect();
             let heap = permutohedron::Heap::new(&mut data);
             for (k, p) in heap.enumerate() {

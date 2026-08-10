@@ -200,9 +200,29 @@ mod kat_tests {
                 [7, 2, 10, 14, 12, 13, 5, 0, 6, 3, 1, 4, 9, 8, 11].into()
             )
         );
+
         assert_eq!(
             1502989870400,
             rank_noprecomp(&[7, 8, 0, 13, 6, 11, 3, 1, 9, 15, 5, 2, 4, 12, 10, 14])
+        );
+
+        assert_eq!(
+            rank_noprecomp(&[3, 2, 6, 14, 4, 11, 10, 1, 7, 5, 8, 9, 12, 0, 13, 15]),
+            1214115477200
+        );
+
+        assert_eq!(
+            rank_noprecomp(&[3, 5, 8, 1, 2, 6, 7, 10, 15, 4, 9, 11, 12, 13, 0, 14]),
+            1307708436426
+        );
+
+        assert_eq!(
+            rank_noprecomp(&[5, 9, 12, 13, 1, 6, 15, 10, 2, 0, 4, 7, 3, 8, 11, 14]),
+            1459635106812
+        );
+        assert_eq!(
+            rank_noprecomp(&[7, 8, 0, 13, 6, 11, 3, 1, 9, 15, 5, 2, 4, 12, 10, 14]),
+            1502989870400
         );
     }
 
@@ -812,5 +832,30 @@ mod kat_tests {
         assert_eq!(117, rank_noprecomp(&[2, 4, 1, 3, 0]));
         assert_eq!(118, rank_noprecomp(&[1, 4, 2, 3, 0]));
         assert_eq!(119, rank_noprecomp(&[4, 1, 2, 3, 0]));
+    }
+
+    #[test]
+    fn test_rank_noprecompute_6() {
+        let prefixes = precompute(10);
+        let x1 = unrank_noprecomp(6, 188);
+        assert_eq!(x1[..], [3, 0, 5, 1, 2, 4]); // verified
+        let x2 = unrank_noprecomp(6, 301);
+        assert_eq!(x2[..], [0, 4, 5, 3, 2, 1]); // verified
+        let x3 = unrank_noprecomp(6, 573);
+        assert_eq!(x3[..], [4, 0, 5, 1, 2, 3]); // verified
+        let x4 = unrank_noprecomp(7, 2554);
+        assert_eq!(x4[..], [0, 2, 3, 4, 6, 5, 1]);
+
+        assert_eq!(2554, rank(&prefixes, [0, 2, 3, 4, 6, 5, 1].into()));
+        // [1, 2, 6, 0, 4, 5, 3]
+        assert_eq!(188, rank(&prefixes, x1.clone()));
+        assert_eq!(301, rank(&prefixes, x2.clone()));
+        assert_eq!(573, rank(&prefixes, x3.clone()));
+        assert_eq!(2554, rank(&prefixes, x4.clone()));
+        assert_eq!(188, rank_noprecomp(&x1));
+        assert_eq!(301, rank_noprecomp(&x2));
+        println!("---");
+        assert_eq!(573, rank_noprecomp(&x3));
+        assert_eq!(2554, rank_noprecomp(&x4));
     }
 }
