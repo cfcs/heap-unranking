@@ -1,6 +1,6 @@
-//
-// Known-answer tests for unrank(), rank()
-//
+//!
+//! Known-answer tests for unrank(), rank()
+//!
 
 #[cfg(test)]
 mod kat_tests {
@@ -19,41 +19,156 @@ mod kat_tests {
         assert_eq!(precomp_digit(3, 2), 0);
     }
 
+    fn precomp_digit_even_f(n: usize, i: usize) -> u8 {
+        assert!(i <= n);
+        assert!(n % 2 == 0);
+        assert!(n & 1 == 0); // n is even
+        assert!(4 <= n);
+        if i == n - 1 {
+            return (0) as u8;
+        }
+        if i == n - 2 {
+            return (n - 1) as u8;
+        }
+        if i == n {
+            return (n - 3) as u8;
+        }
+        // for the remaining i's we should be able to do
+        // i - q for the middle ranges
+        // when i > i+x && i < i-x for some x that depends on q and n
+        match i {
+            0 => (n) as u8,
+            1 => (n - 2) as u8,
+            i => (i - 1) as u8,
+        }
+    }
+
+    fn precomp_digit_even_f_q(n: usize, mut i: usize, q: usize) -> u8 {
+        assert!(i <= n);
+        assert!(n % 2 == 0);
+        assert!(4 <= n);
+        assert!(0 < q && q < n);
+        for _ in 0..q {
+            i = if i == n - 1 {
+                0
+            } else if i == n - 2 {
+                n - 1
+            } else if i == 0 {
+                n - 1 // swapped: was n - 3, now returns what i==n would
+            } else if i == 1 {
+                n - 2
+            } else if i == n {
+                n - 3 // swapped: was n - 1, now returns what i==0 would
+            } else {
+                i - 1
+            };
+            if i == 0 {
+                i = n;
+            } else if i == n {
+                i = 0;
+            }
+        }
+        return i as u8;
+    }
+
     #[test]
     fn precomp_digit_even() {
         // this is the loop var n starting at array length-1
         for n in [4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32] {
             let origin: Vec<_> = (0..n + 1).collect();
-            let mut permutation1 = origin.clone();
-            let mut permutation2 = origin.clone();
+            for q in 0..n {
+                let mut permutation0 = origin.clone();
+                let mut permutation1 = origin.clone();
+                let mut permutation1_s = origin.clone();
+                let mut permutation2 = origin.clone();
+                let mut permutation3 = origin.clone();
+                let mut permutation4 = origin.clone();
 
-            // how we currently do it per n-loop:
-            {
-                let mut scratch = Vec::with_capacity(n);
-                let mut precomped_digits = Vec::with_capacity(n);
-                precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
-
-                scratch.extend(precomped_digits.iter().map(|&d| permutation1[d as usize]));
-                permutation1[0..n].copy_from_slice(&scratch);
-                permutation1.swap(0, n);
-            }
-            {
-                // for even n >= 4, the pattern we are looking for is something like:
-                // [5, 6,   1, 2, 3, 4,   7,   0]  //  n == 8
-
-                // These will get overwritten:
-                let fst = permutation2[n - 3]; // [5] will get overwritten
-                                               // 5,4,3,2 (when n == 8):
-                for x in (2..n - 2).rev() {
-                    permutation2[x] = permutation2[x - 1];
+                for _ in 0..q {
+                    let mut scratch = Vec::with_capacity(n);
+                    let mut precomped_digits = Vec::with_capacity(n);
+                    precomped_digits.extend((0..=n).map(|d| precomp_digit_even_f(n, d)));
+                    scratch.extend(precomped_digits.iter().map(|&d| permutation0[d as usize]));
+                    permutation0[0..=n].copy_from_slice(&scratch);
                 }
-                permutation2[1] = permutation2[n - 2]; // [1] < [6]
-                permutation2[n - 2] = permutation2[n - 1]; // [6] <- [7]
-                permutation2[n - 1] = permutation2[0]; // [7] <- [0]
-                permutation2[0] = permutation2[n];
-                permutation2[n] = fst; // [8] <- [5]
+
+                // how we currently do it per n-loop:
+                for _ in 0..q {
+                    let mut scratch = Vec::with_capacity(n);
+                    let mut precomped_digits = Vec::with_capacity(n);
+                    precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
+
+                    scratch.extend(precomped_digits.iter().map(|&d| permutation1[d as usize]));
+                    permutation1[0..n].copy_from_slice(&scratch);
+                    permutation1.swap(0, n);
+                }
+                assert_eq!(permutation0, permutation1, "n={n} q={q} perm0 == perm1");
+                for _ in 0..q {
+                    let mut scratch = Vec::with_capacity(n + 1);
+                    let mut precomped_digits = Vec::with_capacity(n + 1);
+                    precomped_digits.extend((0..=n).map(|d| precomp_digit_even_f(n, d)));
+
+                    scratch.extend(precomped_digits.iter().map(|&d| permutation1_s[d as usize]));
+                    permutation1_s[0..=n].copy_from_slice(&scratch);
+                }
+                assert_eq!(permutation1, permutation1_s);
+                for _ in 0..q {
+                    // for even n >= 4, the pattern we are looking for is something like:
+                    // [5, 6,   1, 2, 3, 4,   7,   0]  //  n == 8
+
+                    // These will get overwritten:
+                    let fst = permutation2[n - 3]; // [5] will get overwritten
+                                                   // 5,4,3,2 (when n == 8):
+                    for x in (2..n - 2).rev() {
+                        permutation2[x] = permutation2[x - 1];
+                    }
+                    permutation2[1] = permutation2[n - 2]; // [1] < [6]
+                    permutation2[n - 2] = permutation2[n - 1]; // [6] <- [7]
+                    permutation2[n - 1] = permutation2[0]; // [7] <- [0]
+                    permutation2[0] = permutation2[n];
+                    permutation2[n] = fst; // [8] <- [5]
+                }
+                assert_eq!(permutation1, permutation2, "n={n} q={q} perm1 == perm2");
+                if n == 2 {
+                    // special case for n == 2; 0 < q <= 2, so there are only the odd/even cases:
+                    if 0 < q {
+                        permutation3.swap(0, 1 + (q & 1));
+                        permutation3.swap(1, 2);
+                    }
+                    assert_eq!(
+                        permutation1, permutation3,
+                        "n={n} q={q} special case for n == 2"
+                    );
+                } else {
+                    if q > 0 {
+                        // for even n>=4 and q>0, we can do the q rotations and swaps linearly like this:
+                        let mut even_tmp = Vec::with_capacity(n);
+                        even_tmp.clear();
+                        even_tmp.push(permutation4[0]);
+                        even_tmp.push(permutation4[n - 1]);
+                        even_tmp.push(permutation4[n - 2]);
+                        even_tmp.extend_from_slice(&permutation4[1..n - 2]);
+                        even_tmp.push(permutation4[n]);
+
+                        permutation4[0] = even_tmp[even_tmp.len() - q];
+                        permutation4[n] = even_tmp[n - q];
+                        permutation4[n - 1] =
+                            even_tmp[even_tmp.len() + 1 - q - even_tmp.len() * (1 == q) as usize];
+                        permutation4[n - 2] =
+                            even_tmp[even_tmp.len() + 2 - q - even_tmp.len() * (q <= 2) as usize];
+
+                        let start = even_tmp.len() + 3 - q - even_tmp.len() * (q <= 3) as usize;
+                        let pivot = (even_tmp.len() - start).min(n - 3);
+
+                        permutation4[1..=pivot].copy_from_slice(&even_tmp[start..start + pivot]);
+                        permutation4[1 + pivot..n - 2].copy_from_slice(&even_tmp[..n - 3 - pivot]);
+                    }
+                    assert_eq!(
+                        permutation1, permutation4,
+                        "n={n} q={q} perm1 O(n*q) == perm4 O(n)"
+                    );
+                }
             }
-            assert_eq!(permutation1, permutation2, "these two methods should match");
         }
     }
 
@@ -62,12 +177,13 @@ mod kat_tests {
         // this is the loop var n starting at array length-1
         for n in [5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31] {
             let origin: Vec<_> = (0..n + 1).collect();
-            for i in 0..n {
+            for q in 0..n {
                 let mut permutation1 = origin.clone();
                 let mut permutation2 = origin.clone();
+                let mut permutation3_q = origin.clone();
 
                 // how we currently do it per n-loop:
-                {
+                for i in 0..q {
                     let mut scratch = Vec::with_capacity(n);
                     let mut precomped_digits = Vec::with_capacity(n);
                     precomped_digits.extend((0..n).map(|d| precomp_digit(n, d)));
@@ -76,20 +192,31 @@ mod kat_tests {
                     permutation1[0..n].copy_from_slice(&scratch);
                     permutation1.swap(i, n);
                 }
-                {
-                    // for even n >= 7, the pattern we are looking for is something like:
-                    // [6,   1, 2, 3, 4, 5,   0]  //  n == 7
+                for i in 0..q {
+                    // for even n >= 3, the pattern we are looking for is something like:
+                    // [ 2,   1,                     0 ]  //  n == 3
+                    // [ 4,   1, 2, 3,               0 ]  //  n == 5
+                    // [ 6,   1, 2, 3, 4, 5,         0 ]  //  n == 7
+                    // [ 8,   1, 2, 3, 4, 5, 6, 7,   0 ]  //  n == 9
                     //
                     // Note that the middle section doesn't actually move anything, so all we need is:
                     //
                     permutation2.swap(0, n - 1);
                     permutation2.swap(i, n);
                 }
-                assert_eq!(
-                    permutation1, permutation2,
-                    "i={:?} these two methods should match",
-                    i
-                );
+                assert_eq!(permutation1, permutation2, "n={n} q={q}",);
+
+                {
+                    // Similar to permutation2, but with only one swap in the loop,
+                    // at the cost of more static swaps:
+                    permutation3_q.swap(0, n - 1);
+                    for i in 0..q {
+                        permutation3_q.swap(i, n);
+                    }
+                    permutation3_q.swap(0, (q & 1 == 0) as usize * (n - 1));
+                    // the arithmetic: only perform the swap if q is even.
+                }
+                assert_eq!(permutation1, permutation3_q, "n={n} q={q}");
             }
         }
     }
@@ -706,6 +833,11 @@ mod kat_tests {
         );
         assert_eq!(
             unrank_noprecomp(16, 1502989870400),
+            [7, 8, 0, 13, 6, 11, 3, 1, 9, 15, 5, 2, 4, 12, 10, 14].into()
+        );
+        use num_bigint::BigUint;
+        assert_eq!(
+            unrank_bigint(16, BigUint::from(1502989870400usize)),
             [7, 8, 0, 13, 6, 11, 3, 1, 9, 15, 5, 2, 4, 12, 10, 14].into()
         );
     }

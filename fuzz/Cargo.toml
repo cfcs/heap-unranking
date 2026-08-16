@@ -1,0 +1,34 @@
+[package]
+name = "heap-unranking-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1.3", features = ["derive"] }
+
+[dependencies.heap-unranking]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "ranking"
+path = "fuzz_targets/ranking.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "unranking"
+path = "fuzz_targets/unranking.rs"
+test = false
+doc = false

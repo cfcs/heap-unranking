@@ -3,5 +3,11 @@ name = "heap-unranking"
 version = "0.1.0"
 edition = "2024"
 
+# we want optional support for arbitrary size:
+[dependencies]
+num-bigint = "0.5.1"
+num-traits = ">=0.2.19"
+num-integer = ">=0.1.47"
+
 [dev-dependencies]
 permutohedron = "0.2.4"

@@ -70,11 +70,13 @@ The implementations in this repo work on the indices. Whenever you're asked to p
 - What's currently missing from this repo is an efficient algorithm for job splitting, computing either `k` spans or, probably more interesting, factoradic spans to cover $$k \in 0 .. \text{factorial}(n) - 1$$ for a given number of partitions.
 
 - Once we have used unrank() to get a permutation, we also need to recover the internal state used by Heap's algorithm in order to continue the sequence.
+  - see `lib.rs:heaps_state_at_k(n,k)`
 
 ## References
 
 - [Wikipedia on Heap's algorithm](https://en.wikipedia.org/wiki/Heap%27s_algorithm)
 - [Stackexchange explanation of the problem we're solving](https://cs.stackexchange.com/questions/165155/rank-and-unrank-for-heaps-algorithm)
+- [Discussion thread on skipping prefixes, 2023 answer by Pseudonym♦](https://cs.stackexchange.com/a/161542/193615)
 - [Ruslan Ledesma-Garza's article about Heap's Algorithm](https://ruslanledesma.com/2016/06/17/why-does-heap-work.html)
 - *Permutations by Interchanges*, B.R. Heap 1963
 - Knuth volume 4A: section `7.2.1.2`: Generating all permutations

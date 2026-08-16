@@ -1,23 +1,23 @@
-// Ranking / unranking functions for Heap's algorithm
-// cfcs, 2026
+//! Ranking / unranking functions for Heap's algorithm
+//! cfcs, 2026
+//!
+//! unrank(n,k): "skip" k outputs of Heap's algorithm
+//! rank(P): calculate "k" (how many iterations of Heap's algorithm it took to produce P)
 //
-// unrank(n,k): "skip" k outputs of Heap's algorithm
-// rank(P): calculate "k" (how many iterations of Heap's algorithm it took to produce P)
-//
-// Both functions use a precomputed table of final states for prefixes 1 ..= n-1
-// obtainable with precompute(n-1)
+//! Both functions use a precomputed table of final states for prefixes 1 ..= n-1
+//! obtainable with precompute(n-1)
 
-// arr[ 0 : len(S) ] = arr[p] for p in S
-// the "scratch" buffer is used to store the collected elements
-// so we don't have to worry about overwriting entries we need later in the loop
-//
-// Applies the permutation `s` in-place to the prefix of `arr`,
-// composing the `arr` permutation with `s`.
-// The idea is that the permutation pattern `s` is the same, but the `arr`
-// prefix will hold context-specific elements due to suffix values being swapped in
-// from the suffix.
+//! arr\[ 0 : len(S) \] = arr\[p\] for p in S
+//! the "scratch" buffer is used to store the collected elements
+//! so we don't have to worry about overwriting entries we need later in the loop
+
+/// Applies the permutation `s` in-place to the prefix of `arr`,
+/// composing the `arr` permutation with `s`.
+/// The idea is that the permutation pattern `s` is the same, but the `arr`
+/// prefix will hold context-specific elements due to suffix values being swapped in
+/// from the suffix.
 #[inline(always)]
-fn reset_permutation(scratch: &mut Vec<u8>, s: &[u8], arr: &mut [u8]) {
+pub fn reset_permutation(scratch: &mut Vec<u8>, s: &[u8], arr: &mut [u8]) {
     // assert!(scratch.capacity() >= s.len());
 
     // for n <=16 each u8 will be < 16, which means we could use these:
@@ -37,9 +37,12 @@ fn reset_permutation(scratch: &mut Vec<u8>, s: &[u8], arr: &mut [u8]) {
     arr[0..s.len()].copy_from_slice(scratch);
 }
 
-// Precompute final states for each prefix of (excluding) max_n
-// Runtime: O( 0.5 * n^2 * n + n ) -> O(n^3)
-// Space:   O( 0.5 * n^2         ) -> O(n^2)
+///
+/// Precompute final states for each prefix of (excluding) `max_n`
+///
+/// * Runtime: O( 0.5 * n^2 * n + n ) -> O(n^3)
+/// * Space:   O( 0.5 * n^2         ) -> O(n^2)
+///
 pub fn precompute(max_n: usize) -> Vec<Box<[u8]>> {
     let mut s: Vec<Box<[u8]>> = Vec::with_capacity(max_n);
     s.push(Box::new([0; 1])); // trivial, permutations of length 1
@@ -66,11 +69,12 @@ pub fn precompute(max_n: usize) -> Vec<Box<[u8]>> {
     s
 }
 
-//
-// Compute the k'th output of Heap's algorithm for a permutation of n elements
-// Runtime: Worst case: n+(n-1)n/2 * n -> n + 0.5n^3 -> O(n^3)
-//          Best case: n+n -> O(n)
-//
+///
+/// Compute the k'th output of Heap's algorithm for a permutation of n elements
+///
+/// Runtime: Worst case: n+(n-1)n/2 * n -> n + 0.5n^3 -> O(n^3)
+///          Best case: n+n -> O(n)
+///
 pub fn unrank(prefixes: &Vec<Box<[u8]>>, n: usize, mut k: usize) -> Box<[u8]> {
     // Translate k to factoradic digits:
     let qs = (2usize..)
@@ -114,8 +118,10 @@ pub fn unrank(prefixes: &Vec<Box<[u8]>>, n: usize, mut k: usize) -> Box<[u8]> {
     permutation
 }
 
-// functional/recursive implementation of factorizing k into factoradic digits
-pub fn get_qs(n: usize, i: usize, k: usize, acc: Vec<usize>) -> Vec<usize> {
+///
+/// Functional/recursive implementation of factorizing k into factoradic digits
+///
+fn get_qs(n: usize, i: usize, k: usize, acc: Vec<usize>) -> Vec<usize> {
     assert!(n > 0); // calling get_qs with n=0 is an error
     if n == 1 {
         acc
@@ -125,17 +131,40 @@ pub fn get_qs(n: usize, i: usize, k: usize, acc: Vec<usize>) -> Vec<usize> {
     }
 }
 
-//
-// Functional/recursive version of unrank()
-// This is pretty inefficient, but is here to serve as an alternative explanation
-// of what is going on, or to assist in porting/proving efforts.
-//
+#[test]
+fn get_qs_test() {
+    // test that the recursive implementation of `get_qs` matches
+    // the imperative version used in unrank()
+    for n in 1..10 {
+        for k2 in 1..120 {
+            let mut funct = get_qs(n, 1, k2, vec![]);
+            funct.reverse();
+            let mut k = k2;
+            let mut qs = vec![0usize; n - 1].into_boxed_slice();
+            for (q, i) in qs.iter_mut().zip(2usize..) {
+                *q = k % i;
+                k /= i;
+            }
+            assert_eq!(qs, funct.into());
+        }
+    }
+}
+
+///
+/// Functional/recursive version of [`unrank()`]
+///
+/// This is pretty inefficient, but is here to serve as an alternative explanation
+/// of what is going on, or to assist in porting/proving efforts.
+///
 pub fn unrank_recursive(n: usize, k: usize) -> Vec<u8> {
     assert!(n > 0); // invalid if k >= factorial(n), which means n==0 /\ k==0 is invalid
-    fn reset_permutation_functional(prefixes: &[u8], arr: Vec<u8>) -> Vec<u8> {
+    fn reset_permutation_functional<E: std::marker::Copy + Into<usize>>(
+        prefixes: &[E],
+        arr: Vec<E>,
+    ) -> Vec<E> {
         prefixes
             .iter()
-            .map(|&p| arr[p as usize])
+            .map(|&p| arr[p.into()])
             .chain(arr[prefixes.len()..].iter().copied()) // remainder left untouched
             .collect()
     }
@@ -196,14 +225,22 @@ pub fn unrank_recursive(n: usize, k: usize) -> Vec<u8> {
         })
 }
 
-// computes the transpositions for each prefix:
-// for n <= 3:
-//    produces the indices in reverse order: [0], [1,0], [2,1,0]
-// for n >= 4, there are two cases:
-//    n & 1 == 0:
-//    n & 1 == 1:
-// more details in tests/kat.rs
-//
+/// computes the transpositions for each prefix:
+/// for n <= 3:
+///    produces the indices in reverse order: `[0], [1,0], [2,1,0]`
+/// for n >= 4, there are two cases:
+///    n & 1 == 0:
+///    n & 1 == 1:
+/// more details in tests/kat.rs
+///
+/// # TODO
+/// (see `fn f` in tests/kat.rs)
+/// So there are a number of cases for `i`.
+/// Most of them have `i`-independent RHS.
+/// The last case for the "middle" `i`:
+///  - `n` is odd: `i`
+///  - `n` is even: `i-1`
+/// It seems entirely possible to skip these.
 #[inline]
 pub fn precomp_digit(n: usize, i: usize) -> u8 {
     // assert!(i <= n);
@@ -217,16 +254,43 @@ pub fn precomp_digit(n: usize, i: usize) -> u8 {
     }
 }
 
-//
-// The inner body of the loop to advance by a factorial digit q in O(n).
-// Equivalent to the O(n^2) version:
-//   for 0..q {
-//     reset_permutation(&mut scratch, &s[n - 1], &mut permutation);
-//     arr.swap(q * (n & 1), n);
-//   }
-//
+///
+/// The inner body of the loop to advance by a factorial digit `q` in $O(n)$.
+/// - `even_tmp` is cleared at entry, and not on exit.
+///
+/// [`forward_by_q()`] operates solely on the indices of `permutation`, as evident
+/// from the type signature which only requires the [`std::marker::Copy`] trait.
+///
+/// # Examples
+///
+/// Equivalent to the O(n^2) version:
+/// ```
+///   # use heap_unranking::{precompute, reset_permutation, forward_by_q};
+///   let mut permutation1 = [0,1,2,3,4];
+///   let mut permutation2 = permutation1.clone();
+///   # let n = 4 ; assert!(n < permutation1.len());
+///   let mut scratch = Vec::with_capacity(n-1);
+///   # let q = 4; assert!(q <= n);
+///   forward_by_q(n, q, &mut scratch, &mut permutation2);
+///
+///   let prefixes = precompute(n);
+///   for i in 0..q {
+///     reset_permutation(&mut scratch, &prefixes[n-1], &mut permutation1);
+///     permutation1.swap(i * (n & 1), n);
+///   }
+///
+///   assert_eq!(permutation1, permutation2);
+/// ```
+///
 #[inline]
-fn forward_by_q(n: usize, q: usize, even_tmp: &mut Vec<u8>, permutation: &mut [u8]) {
+pub fn forward_by_q<E: std::marker::Copy>(
+    n: usize,
+    q: usize,
+    even_tmp: &mut Vec<E>,
+    permutation: &mut [E],
+) {
+    debug_assert!(q <= n);
+    debug_assert!(n < permutation.len());
     if n & 1 == 0 {
         if n < 4 {
             // special case for n == 2; 0 < q <= 2, so there are only the odd/even cases:
@@ -267,46 +331,150 @@ fn forward_by_q(n: usize, q: usize, even_tmp: &mut Vec<u8>, permutation: &mut [u
     }
 }
 
-//
-// Like unrank(), but without the precomputation table.
-// Runtime: O(n^2)
-//
-pub fn unrank_noprecomp(n: usize, mut k: usize) -> Box<[u8]> {
+///
+/// Compute the internal state required for resuming Heap's Algorithm
+/// at offset `k`.
+/// - `l`: `self.state.len()`
+///
+pub fn heaps_state_at_k(n: usize, k: usize) -> HeapsAlgorithm<u8> {
+    let mut h: HeapsAlgorithm<u8> = HeapsAlgorithm::new((0..(n as u8)).collect::<Vec<u8>>());
+
+    // TODO: should use a generic get_qs(), and one that doesn't need reversing:
+    h.counters = get_qs(n + 1, 0, k, vec![]).into_iter().rev().collect(); // get_qs returns them reversed
+
+    // now need to unrank self.state (the permutation), so we copy-paste from
+    // unrank_noprecomp_gen():
+    /*
+     * We look for the first non-zero digit and subtract one.
+     * Our goal is to end up with `i` as the parity bit (0 or 1), usually `1`.
+     * We also need to fix up the borrowing in the digits preceding the non-zero digit.
+     * I'm not sure we can't just resume at the factorization directly, but this way it is
+     * easy to test.
+     */
+
+    let mut even_tmp: Vec<u8> = Vec::with_capacity(h.state.len() + 1);
+    let qs: Vec<usize> = h.counters.iter().skip(1).copied().collect();
+    for (n, q) in (1..h.state.len())
+        .zip(qs) // TODO we should not clone here
+        .rev()
+        .filter(|(_, q)| !q.is_zero())
+    {
+        forward_by_q(n, q, &mut even_tmp, &mut h.state);
+    }
+
+    // TODO: This part below needs cleaning up. Seems like we could just
+    // use the qs directly?
+
+    h.i = 0; // It may not have yielded yet.
+    for idx in 1..h.counters.len() {
+        if h.counters[idx] == 0 {
+            continue;
+        }
+        h.i = 1; // Heap's algo sets i=1 every time it yields
+        h.counters[idx] -= 1;
+        // we know that all of these are 0, because we are only at idx if
+        // we skipped idx-... on the way here:
+        for idx_borrowing in (1..idx).rev() {
+            h.counters[idx_borrowing] += idx_borrowing;
+        }
+        break;
+    }
+    if h.i != 0 {
+        // Simulate the while-loop in Heap's algo to fixup the counters
+        for idx in h.i..h.counters.len() {
+            if h.counters[idx] >= idx {
+                h.counters[idx] = 0;
+                h.i += 1;
+                continue;
+            }
+            break;
+        }
+        // This swap will be performed by .next(), so we perform it in reverse here:
+        if h.i & 1 == 0 {
+            h.state.swap(0, h.i);
+        } else {
+            h.state.swap(h.counters[h.i], h.i);
+        }
+    }
+
+    h
+}
+
+///
+/// Like [`unrank()`], but without the precomputation table.
+///
+/// Runtime: O(n^2)
+///
+/// # Examples
+///
+/// ```
+/// # use heap_unranking::unrank_noprecomp;
+/// assert_eq!(unrank_noprecomp(3, 5), [2, 1, 0].into());
+/// ```
+pub fn unrank_noprecomp(n: usize, k: usize) -> Box<[u8]> {
+    unrank_noprecomp_gen(0..(n as u8), k)
+}
+
+pub fn unrank_noprecomp64(n: usize, k: u64) -> Box<[u8]> {
+    unrank_noprecomp_gen(0..(n as u8), k)
+}
+
+use num_traits::Zero;
+///
+/// Unrank a permutation of length `n` given the "identity" indices `(0..n)`
+///
+pub fn unrank_noprecomp_gen<R, E, K>(identity: R, mut k: K) -> Box<[E]>
+where
+    R: IntoIterator<Item = E>,
+    E: std::marker::Copy + std::fmt::Debug,
+    K: for<'a> std::ops::Rem<&'a K, Output = K>
+        + for<'a> std::ops::DivAssign<&'a K>
+        + TryInto<usize>
+        + std::ops::AddAssign<K>
+        + num_traits::Zero
+        + num_traits::One
+        + Clone
+        + std::fmt::Debug,
+    <K as TryInto<usize>>::Error: std::fmt::Debug,
+{
+    let mut permutation: Box<[E]> = identity.into_iter().collect();
+
     // Translate k to factoradic digits:
-    let qs: Box<[usize]> = (2usize..)
-        .take(n - 1)
-        .map(|i| {
-            let t_q = k % i;
-            k /= i;
-            t_q
+    let mut i_k = K::one();
+    let qs: Box<[usize]> = (0..permutation.len() - 1)
+        .map(|_| {
+            k /= &i_k;
+            i_k += K::one();
+            let t_q = k.clone() % &i_k;
+            <K as TryInto<usize>>::try_into(t_q).unwrap()
         })
         .collect();
 
-    let mut permutation: Box<[u8]> = (0u8..(n as u8)).collect(); // 0, 1, .., n-1
-
-    let mut even_tmp: Vec<u8> = Vec::with_capacity(n + 1);
+    let mut even_tmp: Vec<E> = Vec::with_capacity(permutation.len() + 1);
 
     // n: from n-1 to 1, step -1  --- (1..permutation.len()) to help the bounds check elision
     // q: qs[n-1] at each step
-    // O(0.5 n) -> O(n), the 0.5 comes from the inner n's being sum(1, 2, .. n)
+    // O(n * 0.5 n) -> O(0.5n^2), the 0.5 comes from the inner n's being sum(1, 2, .. n)
     for (n, q) in (1..permutation.len())
         .zip(qs)
         .rev()
-        .filter(|(_, q)| *q != 0)
+        .filter(|(_, q)| !q.is_zero())
     {
-        forward_by_q(n, q, &mut even_tmp, &mut permutation);
+        forward_by_q(n, q, &mut even_tmp, &mut permutation); // O(n)
     }
 
     permutation
 }
 
-//
-// rank(precompute(), P) computes result k such that unrank(precompute(), k) == P
-// it computes the number of iterations of Heap's algorithm needed
-// to reach P.
-// Runtime: Worst case: (n-1)n/2 * n + n -> 0.5n^3 + n -> O(n^3)
-//          Best case: n+n -> O(n)
-//
+///
+/// rank([precompute()], `P`) computes result `k` such that [unrank]([precompute()], `k`) == `P`
+///
+/// It computes the number of iterations of Heap's algorithm needed to reach `P`.
+///
+/// Runtime:
+/// - Worst case: (n-1)n/2 * n + n -> 0.5n^3 + n -> O(n^3)
+/// - Best case: n+n -> O(n)
+///
 pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
     if permutation.len() <= 1 {
         return 0;
@@ -345,10 +513,10 @@ pub fn rank(prefixes: &Vec<Box<[u8]>>, permutation: Box<[u8]>) -> usize {
     k
 }
 
-//
-// Rank a permutation
-// Runtime: O(n^2), amortized with word operations
-//
+///
+/// Rank a permutation
+/// Runtime: O(n^2), amortized with word operations
+///
 pub fn rank_noprecomp(permutation: &[u8]) -> usize {
     if permutation.len() <= 1 {
         return 0;
@@ -441,31 +609,36 @@ pub fn rank_noprecomp(permutation: &[u8]) -> usize {
             // looping over forward_by_q() for the even `i`s, arriving at this
             // [amortized] O(n) solution. First we use the bitmap version of forward_by_q, tracking
             // only the permutation[i], and we use that to find `q`.
+            // O(0.5n * 0.5 n * ceil(n/wordsize))
             for _ in 1..i {
                 // for q in 1..i
                 if bmap & (1 << i) != 0 {
                     break;
                 } // if permutation_i == tmp[i]
-                q += 1;
                 if bmap & (1 << (i - 1)) != 0
                 /* tmp[i - 1] == permutation_i*/
                 {
                     /* Essentially, if tmp[i-1] == permutation_i:
                             tmp[i - 2] = tmp[i - 1];
-                            tmp[i - 1] = u8::MAX; // we don't want this to remain permutation_i
+                            tmp[i - 1] = u8::MAX; // unset ; we don't want this to remain permutation_i
                     */
                     bmap |= 1 << (i - 2);
                     bmap &= !(1 << (i - 1));
-                    continue;
+                    // Since assert_eq!(bmap & (1<<i), 0) doesn't change, we simulate continue; and
+                    // proceed:
+                    q += 2;
+                } else {
+                    q += 1;
                 }
                 bmap |= (bmap & 1) << (i - 1); // set [i-1] if bmap[0] is set, can continue if rhs!=0
 
                 // emap is what we call even_tmp in the forward_by_q()
                 let mut emap = bmap & 1; // [0]:=tmp[0]
-                emap |= (1 << 1) & ((bmap >> (i - 1)) << 1); // [1]:=tmp[i-1]
-                emap |= (1 << 2) & ((bmap >> (i - 2)) << 2); // [2]:=tmp[i-2]
-                emap |= ((bmap & ((1 << (i - 2)) - 1)) >> 1) << 3; // [3..] = tmp[1..i-2]
-                emap |= ((bmap >> i) & 1) << ((i - 2) - 1 + 3);
+
+                emap |= (bmap >> (i - 2)) & 2; // [1]:=tmp[i-1]
+                emap |= (bmap >> (i - 4)) & 4; // [2]:=tmp[i-2]
+
+                emap |= (bmap & ((1 << (i - 2)) - 1)) << 2; // [3..] = tmp[1..i-2]
 
                 bmap |= (emap & (1 << (i - 1))) << 1; // set [i] if even_tmp[i-1] is set.
                                                       //CAN continue; if rhs!=0
@@ -473,9 +646,7 @@ pub fn rank_noprecomp(permutation: &[u8]) -> usize {
                 bmap |= (emap & (1 << i)) >> i; // set bmap[0] if even_tmp[i] == permutation_i
                                                 // CAN: continue; if rhs != 0
 
-                let pivot = i - 3; //(i -1).min(i - 3); but we have {i >= 4} above.
-
-                let esuffix = (emap >> 2) & ((1 << pivot) - 1);
+                let esuffix = (emap >> 2) & ((1 << (i - 3)) - 1);
                 bmap |= (((!bmap) >> 1) & esuffix) << 1; // secondcopy_from_slice(even_tmp, ..n)
             }
             // Having established `q` we can now advance the prefix permutation by `q` in O(n)
@@ -510,4 +681,182 @@ pub fn rank_noprecomp(permutation: &[u8]) -> usize {
     }
 
     k
+}
+
+use num_bigint::BigUint;
+
+pub fn unrank_bigint(n: usize, k: BigUint) -> Box<[usize]> {
+    unrank_noprecomp_gen(0..n, k)
+}
+
+#[test]
+fn bigint_30() {
+    let perm = unrank_bigint(2, BigUint::new_const(2));
+    assert_eq!(&perm[..], [0, 1]);
+}
+
+///
+/// Classic implementation of Heap's algorithm for iterating over permutations.
+///
+pub struct HeapsAlgorithm<E>
+where
+    E: Clone,
+{
+    state: Box<[E]>,
+    counters: Box<[usize]>,
+    i: usize,
+    k: usize, // used exclusively for debugging
+}
+
+impl<E: Clone> HeapsAlgorithm<E> {
+    ///
+    /// Given an "alphabet", the [`Iterator`] yields the permutations of the alphabet.
+    ///
+    /// # Examples:
+    /// ```
+    /// # use heap_unranking::HeapsAlgorithm;
+    /// for (k, p) in HeapsAlgorithm::new::<Vec<&str>>(vec!["a","b","c","d"]).enumerate() {
+    ///     println!("{k}: {:?}", p);
+    ///     match k {
+    ///        12 => { assert_eq!(p, vec!["a", "c", "d", "b"].into()); }
+    ///        23 => { assert_eq!(p, vec!["b", "c", "d", "a"].into()); }
+    ///        _ => { /* todo!() */ }
+    ///     }
+    /// }
+    /// ```
+    pub fn new<R>(initial: R) -> HeapsAlgorithm<E>
+    where
+        R: IntoIterator<Item = E>,
+        Box<[E]>: From<R> + Clone,
+    {
+        let state: Box<[E]> = initial.into();
+        let n = state.len();
+        HeapsAlgorithm {
+            state: state,
+            counters: (0..n).map(|_| 0).collect(),
+            i: 0, // sentinel for starts
+            k: 0,
+        }
+    }
+}
+use std::num::NonZero;
+impl<E: Clone> Iterator for HeapsAlgorithm<E> {
+    // we will be counting with usize
+    type Item = Box<[E]>;
+
+    //fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+    //	Ok()
+    //}
+
+    ///
+    /// Heap's algorithm: `counters` and `i`:
+    /// - `counters` is the factoradic digits encoding rank
+    /// - `counters[0]` is always zero, D*0!
+    ///   - that is of course a waste, but it saves us having to do arithmetic in the comparison
+    ///     (i==2 addresses D*2!
+    ///   - it also helps with self.state.swap(self.counters[self.i], self.i); not counter-acting
+    ///     self.state.swap(0, self.i)
+    /// - `i` is the current "remainder"
+    ///
+    ///
+    /*
+    k=46 i=2 [0, 0, 1, 3, 1]
+    t_q[0]: 0
+    t_q[1]: 2
+    t_q[2]: 3
+    t_q[3]: 1
+    k=47 i=1 [0, 0, 2, 3, 1]
+    t_q[0]: 1
+    t_q[1]: 2
+    t_q[2]: 3
+    t_q[3]: 1
+    k=48 i=4 [0, 0, 0, 0, 1] <- why is this i=0?
+    t_q[0]: 0     0*1!
+    t_q[1]: 0     0*2!
+    t_q[2]: 0     0*3!
+    t_q[3]: 2     2*4! <-- 48
+
+    */
+    // next() is the only required method
+    fn next(&mut self) -> Option<Box<[E]>> {
+        if self.i == 0 {
+            self.i = 1;
+            self.k += 1;
+            return Some(self.state.clone());
+        }
+        while self.i < self.state.len() {
+            if self.counters[self.i] < self.i {
+                if self.i & 1 == 0
+                /* self.i.is_even() */
+                {
+                    self.state.swap(0, self.i)
+                } else {
+                    self.state.swap(self.counters[self.i], self.i);
+                }
+                self.counters[self.i] += 1;
+                self.i = 1;
+                self.k += 1;
+                return Some(self.state.clone());
+            } else {
+                self.counters[self.i] = 0;
+                self.i += 1;
+            }
+        }
+        None
+    }
+
+    ///
+    /// `nth()` is very similar to heaps_state_at_k(n, k)
+    /// except it's a relative jump from the current `k`.
+    /// It ought to be equal to `heaps_state_at_k(n, k-self.k)`,
+    /// but it would be nice to not rely on maintaining a self.k
+    /// so we can avoid dealing with overflows.
+    ///
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        /*
+        say we're have output k=19 and we need to skip 1:
+        k=19 i=1 [0, 0, 0, 3]
+        t_q[0]: 1    x-------- 0 < 1, so: bump counter, i := 1
+        t_q[1]: 0
+        t_q[2]: 3
+                     x-------- 1 < 1 is false, so set it to zero and bump i:=2
+                 [0, 1, 0, 3]
+        k=20 i=2 [0, 0, 0, 3]
+        t_q[0]: 0       x------- 0 < 2, so: bump counter, i := 1
+        t_q[1]: 1
+        t_q[2]: 3    x---------- 0 < 2, so: bump counter, i := 1
+                 [0, 1, 1, 3]
+        k=21 i=1 [0, 0, 1, 3]
+        t_q[0]: 1
+        t_q[1]: 1
+        t_q[2]: 3
+         */
+        // so we have a bunch of options:
+        // - run the loop (slow)
+        // - sum the factoradic digits
+        //   - overflow sucks.
+        //     - we can double the base of each, capping at 2i?
+        //       - we don't need to compute factorials
+        //       - can manage carry cheaply in O(n)
+        // - decode the current factoradic to an int, add toskip, decode
+
+        let mut toskip = n;
+        // forward_by_q(self.state, .. );
+        while toskip > 0 {
+            if self.counters[self.i] < self.i {
+                self.counters[self.i] += 1;
+                self.i = 1;
+                self.k += 1;
+                toskip -= 1;
+            } else {
+                // fix up factoradic digit overflow
+                //
+                self.counters[self.i] = 0;
+                self.i += 1;
+            }
+        }
+        panic!("NOT IMPLEMENTED");
+        // loop from 1..
+        None
+    }
 }

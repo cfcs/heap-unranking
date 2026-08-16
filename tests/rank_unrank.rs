@@ -122,6 +122,39 @@ mod unittests {
         assert_eq!(6, k2);
     }
 
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(expected = "attempt to multiply with overflow")]
+    fn usize_overflow_n_21_overflows() {
+        usize_overflow_n_21();
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    ///
+    /// Silently returns bad result at the moment
+    ///
+    fn usize_overflow_n_21_wrong() {
+        usize_overflow_n_21();
+    }
+
+    fn usize_overflow_n_21() {
+        let data = [
+            6, 10, 12, 9, 14, 17, 0, 7, 16, 4, 19, 3, 5, 2, 8, 1, 13, 20, 11, 15, 18,
+        ];
+        assert_eq!(21, data.len());
+        let k = rank_noprecomp(&data);
+        assert_eq!(
+            8526381368646914543, k,
+            "have not checked if this is the correct k"
+        );
+        let rec = unrank_noprecomp(data.len(), k);
+        assert_ne!(data, &rec[..]);
+        let prefixes = precompute(20);
+        let k2 = rank(&prefixes, data.into());
+        assert_eq!(k, k2, "at least the two implementations agree");
+    }
+
     #[test]
     fn unrank_matches_output_0_10() {
         // check that unrank() matches the traditional Heap's algorithm's outputs
@@ -152,7 +185,7 @@ mod unittests {
     }
 
     #[test]
-    fn test_rank_noprecomp_matches_output_0_11() {
+    fn test_rank_noprecomp_matches_output_1_11() {
         // check that rank_noprecomp() matches the traditional Heap's algorithm's
         // outputs (from the permutohedron crate):
         for n in 1..=11usize {
@@ -163,6 +196,131 @@ mod unittests {
                 assert_eq!(k, k2, "rank_noprecomp({:?}) == {k}", p);
                 //println!("PASSED: {k2} for n={n}");
             }
+        }
+    }
+
+    #[test]
+    fn test_heaps_algo_4_string() {
+        // check that rank_noprecomp() matches the traditional Heap's algorithm's
+        // outputs (from the permutohedron crate):
+        let n = 4;
+        let mut last_k = 0;
+        for (k, p) in HeapsAlgorithm::new::<Vec<&str>>(vec!["a", "b", "c", "d"]).enumerate() {
+            println!("{k}: {:?}", p);
+            last_k = k;
+        }
+        assert_eq!(
+            (1..=n).product::<usize>(),
+            last_k + 1,
+            "they should yield factorial(4) elements"
+        );
+    }
+
+    #[test]
+    fn test_heaps_algo_matches_output_1_11() {
+        // check that rank_noprecomp() matches the traditional Heap's algorithm's
+        // outputs (from the permutohedron crate):
+        for n in 1..=11usize {
+            let mut data: Vec<u8> = (0..(n as u8)).collect();
+            let heap = permutohedron::Heap::new(&mut data);
+            let heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let mut last_k = 0;
+            for ((k, p), p2) in heap.enumerate().zip(heap2) {
+                assert_eq!(
+                    p.iter().map(|x| *x as usize).collect::<Vec<usize>>(),
+                    p2[..],
+                    "n={n} k={k}"
+                );
+                last_k = k;
+            }
+            assert_eq!(
+                (1..=n).product::<usize>() - 1,
+                last_k,
+                "they should yield factorial(n) elements"
+            );
+        }
+    }
+
+    #[test]
+    fn test_heaps_algo_at_k_output_1_10() {
+        // check that rank_noprecomp() matches the traditional Heap's algorithm's
+        // outputs (from the permutohedron crate):
+        for n in 1..=10usize {
+            let mut data: Vec<u8> = (0..(n as u8)).collect();
+            let heap = permutohedron::Heap::new(&mut data);
+            let mut last_k = 0;
+            for (k, p) in (0..).zip(heap) {
+                let ur = unrank_noprecomp(n, k);
+                let mut heap2 = heaps_state_at_k(n, k);
+                let p2 = heap2.next().unwrap();
+                assert_eq!(p, p2[..], "n={n} k={k}");
+                last_k = k;
+            }
+            assert_eq!(
+                (1..=n).product::<usize>(),
+                last_k + 1,
+                "they should yield factorial(n) elements"
+            );
+        }
+    }
+
+    #[test]
+    fn test_heaps_algo_nth() {
+        for n in 1..=10 {
+            let mut heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let mut last_k = 0;
+            for k in 0..(1..=n).product() {
+                let p3 = heap2.nth(k);
+                let _ = heap2.next();
+                last_k = k;
+            }
+            assert_eq!(
+                (1..=n).product::<usize>() - 1,
+                last_k,
+                "they should yield factorial({n}) elements"
+            );
+        }
+    }
+
+    use num_bigint::BigUint;
+    #[test]
+    fn test_heaps_algo_and_unranking_1_10() {
+        // check that rank_noprecomp() matches the traditional Heap's algorithm's
+        // outputs (from the permutohedron crate):
+        for n in 1..=10usize {
+            let heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let mut last_k = 0;
+            for (k, p) in heap2.enumerate() {
+                let p2 = unrank_bigint(n, BigUint::from(k));
+                assert_eq!(p, p2, "k={k}");
+                last_k = k;
+            }
+            assert_eq!(
+                (1..=n).product::<usize>() - 1,
+                last_k,
+                "they should yield factorial({n}) elements"
+            );
+        }
+    }
+    #[test]
+    fn test_heaps_algo_and_unranking_11_40() {
+        // check that unrank_bigint matches our own permutations
+        for n in 11..=40usize {
+            let heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let mut last_k = 0;
+            for (k, p) in heap2.enumerate() {
+                let p2 = unrank_bigint(n, BigUint::from(k));
+                assert_eq!(p, p2, "k={k}");
+                println!("K={k} {:?}", p);
+                last_k = k;
+                if k >= 50000 {
+                    break; // we can't test exhaustively
+                }
+            }
+            assert!(
+                (1..=n).product::<usize>() - 1 == last_k || last_k == 50000,
+                "they should yield factorial({n}) elements but got {last_k}"
+            );
         }
     }
 
@@ -214,25 +372,6 @@ mod unittests {
                 let f = unrank_recursive(n, k);
                 let o = unrank(&s, n, k);
                 assert_eq!(o, f.into());
-            }
-        }
-    }
-
-    #[test]
-    fn get_qs_test() {
-        // test that the recursive implementation of `get_qs` matches
-        // the imperative version used in unrank()
-        for n in 1..10 {
-            for k2 in 1..120 {
-                let mut funct = get_qs(n, 1, k2, vec![]);
-                funct.reverse();
-                let mut k = k2;
-                let mut qs = vec![0usize; n - 1].into_boxed_slice();
-                for (q, i) in qs.iter_mut().zip(2usize..) {
-                    *q = k % i;
-                    k /= i;
-                }
-                assert_eq!(qs, funct.into());
             }
         }
     }

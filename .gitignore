@@ -5,3 +5,6 @@ target/
 # emacs temp files:
 \#*\#
 *~
+
+# python temp files:
+/__pycache__/
