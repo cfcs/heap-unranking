@@ -206,7 +206,7 @@ mod unittests {
         let n = 4;
         let mut last_k = 0;
         for (k, p) in HeapsAlgorithm::new::<Vec<&str>>(vec!["a", "b", "c", "d"]).enumerate() {
-            println!("{k}: {:?}", p);
+            // println!("{k}: {:?}", p);
             last_k = k;
         }
         assert_eq!(
@@ -254,6 +254,7 @@ mod unittests {
                 let mut heap2 = heaps_state_at_k(n, k);
                 let p2 = heap2.next().unwrap();
                 assert_eq!(p, p2[..], "n={n} k={k}");
+                assert_eq!(ur[..], p2[..], "n={n} k={k} (sanity check)");
                 last_k = k;
             }
             assert_eq!(
@@ -312,7 +313,6 @@ mod unittests {
             for (k, p) in heap2.enumerate() {
                 let p2 = unrank_bigint(n, BigUint::from(k));
                 assert_eq!(p, p2, "k={k}");
-                println!("K={k} {:?}", p);
                 last_k = k;
                 if k >= 50000 {
                     break; // we can't test exhaustively
