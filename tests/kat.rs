@@ -4,6 +4,7 @@
 
 #[cfg(test)]
 mod kat_tests {
+    use heap_unranking::precompute::*;
     use heap_unranking::*;
 
     #[test]
@@ -118,7 +119,7 @@ mod kat_tests {
 
                     // These will get overwritten:
                     let fst = permutation2[n - 3]; // [5] will get overwritten
-                                                   // 5,4,3,2 (when n == 8):
+                    // 5,4,3,2 (when n == 8):
                     for x in (2..n - 2).rev() {
                         permutation2[x] = permutation2[x - 1];
                     }

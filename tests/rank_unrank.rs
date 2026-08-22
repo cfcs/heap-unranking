@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod unittests {
+    use heap_unranking::precompute::*;
     use heap_unranking::*;
 
     // prng for "random" testing:
@@ -201,12 +202,11 @@ mod unittests {
 
     #[test]
     fn test_heaps_algo_4_string() {
-        // check that rank_noprecomp() matches the traditional Heap's algorithm's
-        // outputs (from the permutohedron crate):
+        // check that we get the right amount of yielded elements:
         let n = 4;
         let mut last_k = 0;
-        for (k, p) in HeapsAlgorithm::new::<Vec<&str>>(vec!["a", "b", "c", "d"]).enumerate() {
-            // println!("{k}: {:?}", p);
+        for (k, _p) in HeapsAlgorithm::new::<Vec<&str>>(vec!["a", "b", "c", "d"]).enumerate() {
+            // println!("{k}: {:?}", p);y
             last_k = k;
         }
         assert_eq!(
@@ -241,6 +241,65 @@ mod unittests {
         }
     }
 
+    /*
+            /*
+                if i == 2 && arr[1] == permutation_i {
+                 *qq = 1; // special case for len 3 not covered by the two rules above for [0], [i]
+                arr.swap(1, i);
+                arr.swap(0, 1);
+                continue;
+            }
+             */
+
+                // It is worth noting that below the only operation we perform that involves
+            // the elements of even_tmp / permutation_i is comparing whether or not a given element
+            // is equal to permutation_i or not, so I used a bitmap below to amortize the O(n^2)
+            // looping over forward_by_q() for the even `i`s, arriving at this
+            // [amortized] O(n) solution. First we use the bitmap version of forward_by_q, tracking
+            // only the permutation[i], and we use that to find `q`.
+            // O(0.5n * 0.5 n * ceil(n/wordsize))
+            for it in 1..i {
+                // for q in 1..i
+                if bmap & (1 << i) != 0 {
+                    break;
+                } // if permutation_i == tmp[i]
+                if bmap & (1 << (i - 1)) != 0
+                /* tmp[i - 1] == permutation_i*/
+                {
+                    /* Essentially, if tmp[i-1] == permutation_i:
+                            tmp[i - 2] = tmp[i - 1];
+                            tmp[i - 1] = u8::MAX; // unset ; we don't want this to remain permutation_i
+                    */
+                    bmap |= 1 << (i - 2);
+                    bmap &= !(1 << (i - 1)); // if bmap&1 then this step is redundant since we set it below
+                    // Since assert_eq!(bmap & (1<<i), 0) doesn't change, we simulate continue; and
+                    // proceed:
+                    q += 1;
+            continue;
+                } else {
+                    q += 1;
+                }
+                bmap |= (bmap & 1) << (i - 1); // set [i-1] if bmap[0] is set, can continue if rhs!=0
+
+                // emap is what we call even_tmp in the forward_by_q()
+                let mut emap = bmap & 1; // [0]:=tmp[0]
+
+                emap |= (bmap >> (i - 2)) & 2; // [1]:=tmp[i-1]
+                emap |= (bmap >> (i - 4)) & 4; // [2]:=tmp[i-2]
+
+                emap |= (bmap & ((1 << (i - 2)) - 1)) << 2; // [3..] = tmp[1..i-2]
+
+                bmap |= (emap & (1 << (i - 1))) << 1; // set [i] if even_tmp[i-1] is set.
+                // COULD continue; if rhs!=0
+
+                bmap |= (emap & (1 << i)) >> i; // set bmap[0] if even_tmp[i] == permutation_i
+                // COULD continue; if rhs != 0
+
+                let esuffix = (emap >> 2) & ((1 << (i - 3)) - 1);
+                bmap |= (((!bmap) >> 1) & esuffix) << 1; // secondcopy_from_slice(even_tmp, ..n)
+            }
+    */
+
     #[test]
     fn test_heaps_algo_at_k_output_1_10() {
         // check that rank_noprecomp() matches the traditional Heap's algorithm's
@@ -251,7 +310,7 @@ mod unittests {
             let mut last_k = 0;
             for (k, p) in (0..).zip(heap) {
                 let ur = unrank_noprecomp(n, k);
-                let mut heap2 = heaps_state_at_k(n, k);
+                let mut heap2 = HeapsAlgorithm::at_k(0..(n as u8), k);
                 let p2 = heap2.next().unwrap();
                 assert_eq!(p, p2[..], "n={n} k={k}");
                 assert_eq!(ur[..], p2[..], "n={n} k={k} (sanity check)");
@@ -265,20 +324,172 @@ mod unittests {
         }
     }
 
-    /// Note: currently disabled because `nth` isn't implemented properly yet:
-    //#[test]
-    fn test_heaps_algo_nth() {
-        for n in 1..=10 {
-            let mut heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+    #[test]
+    fn test_heaps_algo_previous_4() {
+        let n = 3;
+        let mut heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        let h0 = heap2.next().unwrap();
+        let h1 = heap2.next().unwrap();
+        let h2 = heap2.next().unwrap();
+        let h3 = heap2.next().unwrap();
+        let h4 = heap2.next().unwrap();
+        let h5 = heap2.next().unwrap();
+        assert_eq!([2, 1, 0], h5[..], "rank 5");
+        assert_eq!([1, 2, 0], h4[..], "rank 4");
+        assert_eq!([0, 2, 1], h3[..], "rank 3");
+        assert_eq!([2, 0, 1], h2[..], "rank 2");
+        assert_eq!([1, 0, 2], h1[..], "rank 1");
+        assert_eq!([0, 1, 2], h0[..], "rank 0");
+
+        let p4 = heap2.previous().unwrap();
+        assert_eq!(h4[..], p4[..], "previous() rank 4");
+        let p3 = heap2.previous().unwrap();
+        assert_eq!(h3[..], p3[..], "previous() rank 3");
+        let p2 = heap2.previous().unwrap();
+        assert_eq!(h2[..], p2[..], "previous() rank 2");
+        let p1 = heap2.previous().unwrap();
+        assert_eq!(h1[..], p1[..], "previous() rank 1");
+        let p0 = heap2.previous().unwrap();
+        assert_eq!(h0[..], p0[..], "previous() rank 0");
+    }
+
+    #[test]
+    fn test_heaps_algo_previous_underflow() {
+        let n = 4_usize;
+
+        let mut heap1: HeapsAlgorithm<usize> = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        assert_eq!(None, heap1.previous());
+        assert_eq!([0, 1, 2, 3], heap1.next().unwrap()[..]);
+        assert_eq!([1, 0, 2, 3], heap1.next().unwrap()[..]);
+        assert_eq!([2, 0, 1, 3], heap1.next().unwrap()[..]);
+        assert_eq!([1, 0, 2, 3], heap1.previous().unwrap()[..]);
+
+        let mut heap2: HeapsAlgorithm<usize> = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        assert_eq!([0, 1, 2, 3], heap2.next().unwrap()[..]);
+        assert_eq!(None, heap2.previous());
+        assert_eq!([0, 1, 2, 3], heap2.next().unwrap()[..]);
+        assert_eq!(None, heap2.previous()); // underflow
+        // Check that we didn't touch the state:
+        assert_eq!([0, 1, 2, 3], heap2.next().unwrap()[..]);
+        assert_eq!([1, 0, 2, 3], heap2.next().unwrap()[..]);
+        assert_eq!([2, 0, 1, 3], heap2.next().unwrap()[..]);
+        assert_eq!([1, 0, 2, 3], heap2.previous().unwrap()[..]);
+        assert_eq!([0, 1, 2, 3], heap2.previous().unwrap()[..]);
+        assert_eq!(None, heap2.previous());
+        assert_eq!(None, heap2.previous());
+        assert_eq!([0, 1, 2, 3], heap2.next().unwrap()[..]);
+    }
+
+    #[test]
+    fn test_heaps_algo_previous_5() {
+        let n = 5;
+        let mut heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        let h0 = heap2.next().unwrap();
+        let h1 = heap2.next().unwrap();
+        let h2 = heap2.next().unwrap();
+        let h3 = heap2.next().unwrap();
+        let h4 = heap2.next().unwrap();
+        let h5 = heap2.next().unwrap();
+        let h6 = heap2.next().unwrap();
+        let h7 = heap2.next().unwrap();
+        assert_eq!([1, 3, 0, 2, 4], h7[..], "rank 7");
+        assert_eq!([3, 1, 0, 2, 4], h6[..], "rank 6");
+        assert_eq!([2, 1, 0, 3, 4], h5[..], "rank 5");
+        assert_eq!([1, 2, 0, 3, 4], h4[..], "rank 4");
+        assert_eq!([0, 2, 1, 3, 4], h3[..], "rank 3");
+        assert_eq!([2, 0, 1, 3, 4], h2[..], "rank 2");
+        assert_eq!([1, 0, 2, 3, 4], h1[..], "rank 1");
+        assert_eq!([0, 1, 2, 3, 4], h0[..], "rank 0");
+        let p6 = heap2.previous().unwrap();
+        assert_eq!(h6[..], p6[..], "previous() rank 6");
+        let p5 = heap2.previous().unwrap();
+        assert_eq!(h5[..], p5[..], "previous() rank 5");
+        let p4 = heap2.previous().unwrap();
+        assert_eq!(h4[..], p4[..], "previous() rank 4");
+        let p3 = heap2.previous().unwrap();
+        assert_eq!(h3[..], p3[..], "previous() rank 3");
+        let p2 = heap2.previous().unwrap();
+        assert_eq!(h2[..], p2[..], "previous() rank 2");
+        let p1 = heap2.previous().unwrap();
+        assert_eq!(h1[..], p1[..], "previous() rank 1");
+        let p0 = heap2.previous().unwrap();
+        assert_eq!(h0[..], p0[..], "previous() rank 0");
+    }
+
+    #[test]
+    fn test_heaps_algo_previous_1_10() {
+        // check that rank_noprecomp() matches the traditional Heap's algorithm's
+        // outputs (from the permutohedron crate):
+        for n in 1..=10usize {
+            let mut data: Vec<u8> = (0..(n as u8)).collect();
+            let heap = permutohedron::Heap::new(&mut data);
             let mut last_k = 0;
-            for k in 0..(1..=n).product() {
-                let p3 = heap2.nth(k);
-                let _ = heap2.next();
+            for (k, p) in (0..).zip(heap).skip(1) {
+                let ur = unrank_noprecomp(n, k - 1);
+
+                let mut heap2 = HeapsAlgorithm::at_k(0..(n as u8), k);
+                let _kx = heap2.next().unwrap();
+
+                let p2 = heap2.previous().unwrap();
+                assert_eq!(ur[..], p2[..], "n={n} k={k} previous() == unrank(k-1)");
+                let p3 = heap2.next().unwrap();
+                assert_eq!(p, p3[..], "n={n} k={k} next() still works");
                 last_k = k;
             }
             assert_eq!(
-                (1..=n).product::<usize>() - 1,
-                last_k,
+                (1..=n).product::<usize>(),
+                last_k + 1,
+                "they should yield factorial(n) elements"
+            );
+        }
+    }
+
+    /// Note: currently disabled because `nth` isn't implemented properly yet:
+    #[test]
+    fn test_heaps_algo_nth() {
+        for n in 1..=10 {
+            let mut heap1 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let mut last_k = 0;
+            let fact = (1..=n).product();
+            for k in 0..fact {
+                let p1 = heap1.next();
+                let p2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>()).nth(k);
+                assert_eq!(p1, p2, "n={n} k={k}: from k=0 to nth(k)");
+                if k > 1 {
+                    println!("-----nth(k-1) for k={k}");
+                    let mut h3 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+                    h3.nth(k - 1);
+                    println!("||  h3.next() after nth(k-1) leaves {:?}", p1);
+                    let p3 = h3.next();
+                    assert_eq!(p1, p3, "from 0 to nth(k-1);next() is equivalent to nth(k)");
+                    if n > 3 {
+                        if k > 5 && k < 10 {
+                            // test that nth() skips correctly relative to current position
+                            println!("========================= multi-nth:");
+                            let x = k - 4;
+                            let y = k - x;
+                            let mut h2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+                            let x1 = h2.nth(x); // x + 1
+                            println!("x=={x} + y=={y} == {:?} k=={k}", x + y);
+                            let x2 = h2.nth(y); // y + 1
+                            println!(
+                                "k={k} x1.nth({x}):{:?} x2.nth({y}):{:?} == p1:{:?}",
+                                x1, x2, p1
+                            );
+                            //let p4 = h2.next();
+                            assert_eq!(
+                                p1,
+                                x2,
+                                //"p4: {:?}", p4
+                            );
+                        }
+                    }
+                }
+                last_k = k;
+            }
+            assert_eq!(
+                (1..=n).product::<usize>(),
+                last_k + 1,
                 "they should yield factorial({n}) elements"
             );
         }
@@ -295,6 +506,8 @@ mod unittests {
             for (k, p) in heap2.enumerate() {
                 let p2 = unrank_bigint(n, BigUint::from(k));
                 assert_eq!(p, p2, "k={k}");
+                let k2 = rank_bigint(&p2);
+                assert_eq!(k, k2.try_into().expect("ranks for n=10 fit in usize?"));
                 last_k = k;
             }
             assert_eq!(
@@ -313,13 +526,15 @@ mod unittests {
             for (k, p) in heap2.enumerate() {
                 let p2 = unrank_bigint(n, BigUint::from(k));
                 assert_eq!(p, p2, "k={k}");
+                let k2 = rank_bigint(&p2);
+                assert_eq!(k, k2.try_into().expect("should be <= 50000"));
                 last_k = k;
-                if k >= 50000 {
+                if k == 50000 {
                     break; // we can't test exhaustively
                 }
             }
             assert!(
-                (1..=n).product::<usize>() - 1 == last_k || last_k == 50000,
+                last_k == 50000 || (1..=n).product::<usize>() - 1 == last_k,
                 "they should yield factorial({n}) elements but got {last_k}"
             );
         }

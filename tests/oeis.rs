@@ -1,5 +1,5 @@
 //
-// Compute OEIS A280318 a(n) for arbitrary n in sub-factorial time O(n^3).
+// Compute OEIS A280318 a(n) for arbitrary n in sub-factorial time O(n^2).
 // https://oeis.org/A280318
 //
 // @cfcs, Aug 2026
@@ -387,14 +387,12 @@ mod oeis_kat {
             ([4, 3, 2, 1], 23, 18),
         ];
 
-        let prefixes = precompute(4);
-
         for (perm, expected, heap_n) in tests {
             // subtract 1 from each element because they are 1-indexed in the OEIS
             // example, and our indices are 0-indexed:
             let result = rev_colex_index(&perm.map(|e| e - 1));
             assert_eq!(result, expected);
-            let heap_ranked = rank(&prefixes, Box::new(perm.map(|e| e - 1)));
+            let heap_ranked = rank_noprecomp(&perm.map(|e| e - 1)[..]);
             assert_eq!(heap_n, heap_ranked);
         }
     }
@@ -403,11 +401,10 @@ mod oeis_kat {
     fn check_oies_table_5040() {
         // Check the a(n) entries from OEIS match our unrank() implementation
         // for the first min(5040, n!) entries (the OEIS table has 5040 entries):
-        let prefixes = precompute(21);
         for n in 1..21 {
             let fact = (1..=n).product::<usize>();
             (0..fact).zip(A280318).for_each(|(i, entry)| {
-                let b = unrank(&prefixes, n, i);
+                let b = unrank_noprecomp(n, i);
                 let idx = rev_colex_index(&b[..]);
                 assert_eq!(entry, idx, "{:?}#{:?}::{:?}", n, i, b);
             })

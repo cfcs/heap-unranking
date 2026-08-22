@@ -16,7 +16,7 @@
 
 Heap's algorithm generates all permutations of an array of length `n` by swapping exactly two elements at each "step". Its simplicity of implementation and low overhead per step sometimes makes it an attractive alternative to lexicographical enumeration of permutations which requires division calculations that can be costly.
 
-One would think that these properties would also make Heap's algorithm popular for parallel / distributed computations on permutations, but in order to split up the work of processing the $n$ permutations, a method to "resume" Heap's algorithm from a distant offset/rank is required. Unfortunately the Internet isn't exactly abundant with implementations of such unranking functions; I couldn't find any.
+One would think that these properties would also make Heap's algorithm popular for parallel / distributed computations on permutations, but in order to split up the work of processing the $n$ permutations, a method to "resume" Heap's algorithm from a distant offset/rank is required. Unfortunately the Internet isn't exactly abundant with implementations of such unranking functions; I couldn't find any. Hence this repo.
 
 ## How it works
 
@@ -29,38 +29,28 @@ This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O
 
 3. It is perhaps also worth mentioning that fewer than $n-1$ prefixes are needed for small $k$; for example $k = 0$ does not make use of the prefix-enabled skipping.
 
-4. **Update Aug 2026:** `unrank_noprecomp()` runs in $O(\frac{1}{2}n^2)$ time without the precomputations by unrolling the transformations performed by the precomputation tables.
-
-5. See `tests/kat.rs:precompute_kats()` for an alternative solution that trades the need for prefix tables for more processing per `unrank`/`rank`.
+4. **Update Aug 2026:** `unrank_noprecomp_gen()` runs in $O(\frac{1}{2}n^2)$ time without the precomputations by unrolling the transformations performed by the precomputation tables so the work for each prefix is $O(n)$ instead of $O(n^2)$. `rank_noprecomp_gen()` uses the same trick for ranking.
 
 ## Source code index
 
-So here are a couple of implementations, based on exploiting the property that the prefix permutations repeat. Note that since the rust code uses `usize`, overflows for `n > 20` aren't handled. The python implementation is backed by a bigint library and should work correctly for any `n` and `k`.
+So here are a couple of implementations, based on exploiting the property that the prefix permutations repeat.
 
 Rust source code in `src/lib.rs`:
-- `pub fn unrank(prefixes, n, k)`: return the `k`'th output of Heap's algorithm in $O(\frac{1}{2}n^3)$ time.
-  - `python`: `heaps.py:HeapUnranker.unrank_loop(self, n, k)`
 
-- `pub fn unrank_noprecomp(n,k)`: like `unrank(n,k)`, but using `fn precomp_digit(n,i)` **instead of the precomputation table.** See `tests/kat.rs:precompute_kats` for examples. This runs in $O(\frac{1}{2}n^2)$ time with $O(3n)$ memory.
+- `pub fn unrank_noprecomp_gen(n,k)`: return the `k`'th output of Heap's algorithm This runs in $O(\frac{1}{2}n^2)$ time.
 
-- `pub fn unrank_recursive(n,k)`: functional, immutable, slow version of `unrank()`
-  - `python`: `heaps.py:HeapUnranker.unrank(self, n,k)` (more or less)
-
-
-
-- `pub fn precompute(n)`: Precompute the prefix permutations up to `n` in $O(\frac{1}{2}n^3 + n)$ time and $O(\frac{1}{2} n^2)$ space. Needed for `unrank(prefixes, n, k)` and `rank(prefixes, permutation)`.
-
-- `pub fn rank(prefixes, permutation)`: return `k` such that `permutation == unrank(n,k)`, in $O(\frac{1}{2}n^3 + n)$ time.
-  - [ ] replacing `reset_permutation()` with `precomp_digit()` ought to be easy, but I haven't done it yet.
-    - Should also use the same trick as in `unrank_precomp()` and see if we can get this to run in $O(n^2)$ too.
-  - `python`: `heaps.py:HeapUnranker.rank(self, n, P)`
-
-- `pub fn rank_noprecomp(permutation)`: return `k` such that `permutation == unrank(permutation.len(),k)`, in $O(\frac{1}{2}n^2)$ (amortized, with `i32` operations for the even branch). Without precomputed prefix tables.
+- `pub fn rank_noprecomp_gen(permutation)`: return `k` such that `permutation == unrank(n,k)`, in $O(\frac{1}{2}n^2)$ time.
 
 - `tests/oeis.rs`: Calculations related to [OEIS A280318](https://oeis.org/A280318) in time less than $O(n!)$
   - `check_oeis_table_5040()`: `a(n)` for an arbitrary `n`.
-  - `rank_example_for_n_4()`: Finding `n` given `a(n)`, using `rank()`.
+  - `rank_example_for_n_4()`: Finding `n` given `a(n)`, using `rank_noprecomp_gen()`.
 
+- The library comes with a ready-to-use Rust `Iterator` implementation of Heap's algorithm:
+- `pub fn step()`: Step through Heap's algorithm (used by `::next()`)
+- `pub fn previous()`: Step through Heap's algorithm in reverse(!) - this was fun to write, haven't seen that anywhere else.
+- `pub fn ::at_k(k)`: Unrank such that `h.next()` yields permutation `k`, $O(\frac{1}{2}n^2)$, implemened with `unrank_noprecomp_gen()`.
+
+I recommend browsing the Rust documentation generated with the `cargo doc` command.
 
 The implementations in this repo work on the indices. Whenever you're asked to provide a "permutation", you're being asked for a list of transposition indices. Example: If you want to unrank the final output of Heap's algorithm given a base array of `[r,g,b]`, you'd call `unrank(3, 5 /* 0-indexed */)` and receive `[2,1,0]`, and you'd then have to translate `[r,g,b][x] for x in [2,1,0]` to `[b,g,r]` yourself.
 
@@ -68,9 +58,6 @@ The implementations in this repo work on the indices. Whenever you're asked to p
 ## Missing
 
 - What's currently missing from this repo is an efficient algorithm for job splitting, computing either `k` spans or, probably more interesting, factoradic spans to cover $$k \in 0 .. \text{factorial}(n) - 1$$ for a given number of partitions.
-
-- Once we have used unrank() to get a permutation, we also need to recover the internal state used by Heap's algorithm in order to continue the sequence.
-  - see `lib.rs:heaps_state_at_k(n,k)`
 
 ## References
 
