@@ -86,8 +86,8 @@ mod kat_tests {
                 let mut permutation4 = origin.clone();
 
                 for _ in 0..q {
-                    let mut scratch = Vec::with_capacity(n);
-                    let mut precomped_digits = Vec::with_capacity(n);
+                    let mut scratch = Vec::with_capacity(n + 1);
+                    let mut precomped_digits = Vec::with_capacity(n + 1);
                     precomped_digits.extend((0..=n).map(|d| precomp_digit_even_f(n, d)));
                     scratch.extend(precomped_digits.iter().map(|&d| permutation0[d as usize]));
                     permutation0[0..=n].copy_from_slice(&scratch);

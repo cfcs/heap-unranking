@@ -998,10 +998,10 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug> Iterator for HeapsAlgorithm
     ///
     /// Skip `n` outputs and return the next permutation.
     ///
-    /// `nth()` is very similar to [`heaps_state_at_k(n, k)`]
+    /// `nth()` is very similar to [`HeapsAlgorithm::at_k`]`(n, k-self.k)`
     /// except it's a relative jump from the current `k`.
     ///
-    /// It should be equal to [`heaps_state_at_k(n, k-self.k)`],
+    /// It should be equal to [`HeapsAlgorithm::at_k`]`(n, k-self.k)`,
     /// without relying on maintaining a `self.k`, so we can avoid
     /// dealing with overflows.
     ///

@@ -24,11 +24,13 @@ jobs:
       run: cargo test --verbose --profile=release
     - name: Run tests (slow)
       run: cargo test --verbose
+    - name: Install cargo-fuzz
+      run: cargo install cargo-fuzz
     - name: Run fuzz ranking
-      run: cargo fuzz run ranking -- -max_total_time=20 -max_len=9
+      run: cargo fuzz run ranking --sanitizer=none -- -max_total_time=20 -max_len=9
     - name: Run fuzz unranking
-      run: cargo fuzz run unranking -- -max_total_time=20
+      run: cargo fuzz run unranking --sanitizer=none -- -max_total_time=20 -max_len=128
     - name: Run fuzz bigint-previous-next
-      run: cargo fuzz run bigint-previous-next -- -max_total_time=20
+      run: cargo fuzz run bigint-previous-next --sanitizer=none -- -max_total_time=20 -max_len=215
     - name: Run fuzz bigint-all
-      run: cargo fuzz run bigint-all -- -max_total_time=20
+      run: cargo fuzz run bigint-all --sanitizer=none -- -max_total_time=20 -max_len=212

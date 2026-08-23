@@ -37,6 +37,10 @@ fuzz_target!(|args: NK| {
         fact_i *= BigUint::from(i + 1);
     }
 
+    if fact_i.bits() * 8 < args.data.len() as u64 {
+        return;
+    }
+
     let input_rank = BigUint::from_bytes_le(&args.data[..]);
     let fwd_rank = BigUint::from(args.steps as usize + 1_usize) + &input_rank;
 

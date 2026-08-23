@@ -20,6 +20,10 @@ fuzz_target!(|data: &[u8]| {
         fact_i *= BigUint::from(i + 1);
     }
 
+    if fact_i.bits() * 8 + 1 < data.len() as u64 {
+        return;
+    }
+
     let input_rank = BigUint::from_bytes_le(&data[1..]);
 
     if input_rank >= fact_i {

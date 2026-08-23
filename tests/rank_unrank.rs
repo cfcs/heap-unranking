@@ -456,26 +456,27 @@ mod unittests {
                 let p2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>()).nth(k);
                 assert_eq!(p1, p2, "n={n} k={k}: from k=0 to nth(k)");
                 if k > 1 {
-                    println!("-----nth(k-1) for k={k}");
+                    //println!("-----nth(k-1) for k={k}");
                     let mut h3 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
                     h3.nth(k - 1);
-                    println!("||  h3.next() after nth(k-1) leaves {:?}", p1);
+                    //println!("||  h3.next() after nth(k-1) leaves {:?}", p1);
                     let p3 = h3.next();
                     assert_eq!(p1, p3, "from 0 to nth(k-1);next() is equivalent to nth(k)");
                     if n > 3 {
                         if k > 5 && k < 10 {
                             // test that nth() skips correctly relative to current position
-                            println!("========================= multi-nth:");
+                            //println!("========================= multi-nth:");
                             let x = k - 4;
                             let y = k - x;
                             let mut h2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
                             let x1 = h2.nth(x); // x + 1
-                            println!("x=={x} + y=={y} == {:?} k=={k}", x + y);
+                            //println!("x=={x} + y=={y} == {:?} k=={k}", x + y);
                             let x2 = h2.nth(y); // y + 1
-                            println!(
+
+                            /*println!(
                                 "k={k} x1.nth({x}):{:?} x2.nth({y}):{:?} == p1:{:?}",
                                 x1, x2, p1
-                            );
+                            );*/
                             //let p4 = h2.next();
                             assert_eq!(
                                 p1,
