@@ -31,6 +31,6 @@ jobs:
     - name: Run fuzz unranking
       run: cargo fuzz run unranking --sanitizer=none -- -max_total_time=20 -max_len=128
     - name: Run fuzz bigint-previous-next
-      run: cargo fuzz run bigint-previous-next --sanitizer=none -- -max_total_time=20 -max_len=215
+      run: cargo fuzz run bigint-previous-next --sanitizer=none -- -max_total_time=20 -max_len=600
     - name: Run fuzz bigint-all
-      run: cargo fuzz run bigint-all --sanitizer=none -- -max_total_time=20 -max_len=212
+      run: cargo fuzz run bigint-all --sanitizer=none -- -max_total_time=20 -max_len=600

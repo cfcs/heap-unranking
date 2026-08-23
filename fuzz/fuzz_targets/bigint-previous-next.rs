@@ -12,7 +12,7 @@ use num_bigint::BigUint;
 #[derive(Debug, Arbitrary)]
 pub struct NK {
     pub data: Box<[u8]>,
-    pub n: u8,
+    pub n: u16,
     pub steps: u16,
     // pub x: BigUint, // feature=quickcheck
 }
@@ -21,7 +21,7 @@ fuzz_target!(|args: NK| {
     if args.data.len() == 0 {
         return;
     }
-    if args.n == 0 {
+    if args.n == 0 || args.n > 515 {
         return;
     }
 
