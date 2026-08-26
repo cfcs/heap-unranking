@@ -625,25 +625,20 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug> HeapsAlgorithm<E> {
     pub fn previous(&mut self) -> Option<&<HeapsAlgorithm<E> as Iterator>::Item> {
         // We need to reconstruct self.i from the previous iteration,
         // and subtract one from the factorial representation.
-        // Amortized O(1), worst case O(n)
-        let mut borrow = 1_isize;
+        // Amortized O(1), worst case O(n): half the cases [1]==1 and so on:
         let mut last_borrow = 0;
         for (i, c) in self.counters.iter_mut().enumerate().skip(1) {
-            let s = (*c as isize) - borrow;
-            last_borrow = i;
-            if s < 0 {
-                borrow = 1;
-                *c = i;
-                continue;
+            if *c != 0 {
+                *c -= 1;
+                last_borrow = i;
+                break;
             }
-            borrow = 0;
-            *c = s as usize;
-            break;
+            *c = i;
         }
 
         // If it underflows, it will start generating the Heap's algorithm sequence anew.
         // Our subtraction will have modified self.counters, and self.i was 1, so we reset the state:
-        if borrow != 0 {
+        if last_borrow == 0 {
             self.counters.fill(0);
             self.i = 0;
             return None;

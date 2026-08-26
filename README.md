@@ -12,6 +12,9 @@
 
    Identify the offset ("rank") of a given permutation from the start.
 
+- `previous()`: Run Heap's algorithm in reverse
+  - `step()`: Run Heap's algorithm (traditional implementation)
+
 ## Introduction
 
 Heap's algorithm generates all permutations of an array of length `n` by swapping exactly two elements at each "step". Its simplicity of implementation and low overhead per step sometimes makes it an attractive alternative to lexicographical enumeration of permutations which requires division calculations that can be costly.
@@ -35,7 +38,11 @@ This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O
 
 So here are a couple of implementations, based on exploiting the property that the prefix permutations repeat.
 
-Rust source code in `src/lib.rs`:
+The implementations in this repo work on the indices. Whenever you're asked to provide a "permutation", you're being asked for a list of transposition indices. Example: If you want to unrank the final output of Heap's algorithm given a base array of `[r,g,b]`, you'd call `unrank(3, 5 /* 0-indexed */)` and receive `[2,1,0]`, and you'd then have to translate `[r,g,b][x] for x in [2,1,0]` to `[b,g,r]` yourself.
+
+
+### Rust source code (`src/lib.rs`, `tests/oeis.rs`):
+  (I recommend browsing the Rust documentation generated with the `cargo doc` command)
 
 - `pub fn unrank_noprecomp_gen(n,k)`: return the `k`'th output of Heap's algorithm This runs in $O(\frac{1}{2}n^2)$ time.
 
@@ -50,10 +57,9 @@ Rust source code in `src/lib.rs`:
 - `pub fn previous()`: Step through Heap's algorithm in reverse(!) - this was fun to write, haven't seen that anywhere else.
 - `pub fn ::at_k(k)`: Unrank such that `h.next()` yields permutation `k`, $O(\frac{1}{2}n^2)$, implemened with `unrank_noprecomp_gen()`.
 
-I recommend browsing the Rust documentation generated with the `cargo doc` command.
-
-The implementations in this repo work on the indices. Whenever you're asked to provide a "permutation", you're being asked for a list of transposition indices. Example: If you want to unrank the final output of Heap's algorithm given a base array of `[r,g,b]`, you'd call `unrank(3, 5 /* 0-indexed */)` and receive `[2,1,0]`, and you'd then have to translate `[r,g,b][x] for x in [2,1,0]` to `[b,g,r]` yourself.
-
+### Python source code in `heaps.py`:
+- `def rank[E](identity, permutation: list[E]) -> int`: return the `k`'th output of Heap's algorithm
+- `def unrank[E](identity[E], rank:int) -> list[E]`: given the initial array and an output from Heap's algorithm, return `k` such that `permutation == unrank(initial, k)`
 
 ## Missing
 
