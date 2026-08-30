@@ -35,7 +35,7 @@ def heap_generate(n):
     i = 1
     while i < n:
         if c[i] < i:
-            if i % 2 == 0:
+            if i & 1 == 0:
                 arr[0], arr[i] = arr[i], arr[0]
             else:
                 arr[c[i]], arr[i] = arr[i], arr[c[i]]
@@ -75,10 +75,17 @@ def forward_by_q(n, q, even_tmp, permutation):
         permutation[1 : pivot + 1] = even_tmp[start : start + pivot]
         permutation[1 + pivot : n - 2] = even_tmp[: n - 3 - pivot]
     else:
-        permutation[0], permutation[n - 1] = permutation[n - 1], permutation[0]
-        permutation[0], permutation[n] = permutation[n], permutation[0]
-        for i in range(1, q):
-            permutation[i], permutation[n] = permutation[n], permutation[i]
+        permutation[n - 1], permutation[0], permutation[n] = (
+            permutation[0],
+            permutation[n],
+            permutation[n - 1],
+        )
+        if q >= 2:
+            permutation[1], permutation[2:q], permutation[n] = (
+                permutation[n],
+                permutation[1 : q - 1],
+                permutation[q - 1],
+            )
         if q & 1 == 0:
             permutation[0], permutation[n - 1] = permutation[n - 1], permutation[0]
 
@@ -94,7 +101,7 @@ def rank(identity, permutation) -> int:
     # assert len(identity) == len(permutation)
     if len(permutation) <= 1:
         return 0
-    arr = [x for x in identity]
+    arr = list(identity)
     qs = [0] * (len(permutation))
     even_tmp = [0] * len(permutation)
     for i in reversed(range(len(permutation))):
@@ -117,19 +124,17 @@ def rank(identity, permutation) -> int:
             if qs[i] & 1 == 0:
                 arr[0], arr[i - 1] = arr[i - 1], arr[0]
             continue
-        idx = arr[1:].index(permutation[i])
-        if i - idx > 3:
-            qs[i] = i - idx - 3
+        idx = arr.index(permutation[i], 1, i)
+        if i - idx > 2:
+            qs[i] = i - idx - 2
         else:
-            qs[i] = 1 + idx
+            qs[i] = idx
         forward_by_q(i, qs[i], even_tmp, arr)
     # Decode the factoradic rank into a (non-negative) integer rank:
     k = qs[0]
     fact_i = 1
-    for i, q in enumerate(qs):
-        if i == 0:
-            continue
-        fact_i *= i
+    for i, q in enumerate(qs[1:]):
+        fact_i *= i + 1
         k += q * fact_i
     return k
 
@@ -141,7 +146,7 @@ def unrank(identity, k: int) -> list[int]:
         0 < n
         0 <= k < n!
     """
-    permutation = [i for i in identity]
+    permutation = list(identity)
 
     # decode `k` into factorial number system digits (q);
     # we could pass in `k` already in this encoding to alleviate

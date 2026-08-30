@@ -132,7 +132,7 @@ pub fn unrank_recursive(n: usize, k: usize) -> Vec<u8> {
 ///   let mut permutation1 = [0,1,2,3,4];
 ///   let mut permutation2 = permutation1.clone();
 ///   # let n = 4 ; assert!(n < permutation1.len());
-///   let mut scratch = Vec::with_capacity(n-1);
+///   let mut scratch = Vec::with_capacity(n+1);
 ///   # let q = 4; assert!(q <= n);
 ///   forward_by_q(n, q, &mut scratch, &mut permutation2);
 ///
@@ -169,6 +169,7 @@ pub fn forward_by_q<E: std::marker::Copy>(
         // which is equivalent to:
         // for _ in q { reset_permutation(); permutation.swap(0, n); }:
         even_tmp.clear();
+        debug_assert!(even_tmp.capacity() >= n + 1);
         even_tmp.push(permutation[0]);
         even_tmp.push(permutation[n - 1]);
         even_tmp.push(permutation[n - 2]);
@@ -186,14 +187,20 @@ pub fn forward_by_q<E: std::marker::Copy>(
         permutation[1..=pivot].copy_from_slice(&even_tmp[start..start + pivot]);
         permutation[1 + pivot..n - 2].copy_from_slice(&even_tmp[..n - 3 - pivot]);
     } else {
-        assert!(q < permutation.len()); // try to get the compiler to elide bounds checks below
-        permutation.swap(0, n - 1);
-        permutation.swap(0, n);
-        for i in 1..q {
-            permutation.swap(i, n);
-        }
-        if q & 1 == 0 {
+        permutation.swap(n, n - 1);
+        if q & 1 == 1 {
             permutation.swap(0, n - 1);
+        }
+        if q >= 2 {
+            /* Equivalent to:
+               for i in 1..q {
+                 permutation.swap(i, n);
+               }
+            */
+            let last_element = permutation[q - 1];
+            permutation.copy_within(1..q - 1, 2);
+            permutation[1] = permutation[n];
+            permutation[n] = last_element;
         }
     }
 }
