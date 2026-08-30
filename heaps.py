@@ -111,24 +111,12 @@ def rank(identity, permutation) -> int:
             qs[i] = i
             forward_by_q(i, i, even_tmp, arr)
             continue
-        if i & 1 == 1:
-            arr[0], arr[i - 1] = arr[i - 1], arr[0]
-            arr[0], arr[i] = arr[i], arr[0]
-            qs[i] = i - 1
-            for q in range(1, i - 1):
-                # Transition through blocks until the last element matches target permutation[i]:
-                if permutation[i] == arr[i]:
-                    qs[i] = q
-                    break
-                arr[i], arr[q] = arr[q], arr[i]
-            if qs[i] & 1 == 0:
-                arr[0], arr[i - 1] = arr[i - 1], arr[0]
-            continue
+
         idx = arr.index(permutation[i], 1, i)
-        if i - idx > 2:
-            qs[i] = i - idx - 2
+        if i & 1 == 1:
+            qs[i] = 1 if idx + 1 == i else idx + 1
         else:
-            qs[i] = idx
+            qs[i] = i - idx - 2 if i - idx > 2 else idx
         forward_by_q(i, qs[i], even_tmp, arr)
     # Decode the factoradic rank into a (non-negative) integer rank:
     k = qs[0]

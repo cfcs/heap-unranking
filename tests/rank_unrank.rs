@@ -469,7 +469,7 @@ mod unittests {
                             let x = k - 4;
                             let y = k - x;
                             let mut h2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
-                            let x1 = h2.nth(x); // x + 1
+                            let _ = h2.nth(x); // x + 1
                             //println!("x=={x} + y=={y} == {:?} k=={k}", x + y);
                             let x2 = h2.nth(y); // y + 1
 

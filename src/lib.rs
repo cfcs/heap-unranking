@@ -225,7 +225,7 @@ where
     let mut arr: Box<[E]> = identity.into_iter().collect();
     let mut qs: Box<[usize]> = vec![0; permutation.len() - 1].into_boxed_slice();
     let mut even_tmp: Vec<E> = Vec::with_capacity(permutation.len() + 1); // TODO
-    for (qq, (i, &permutation_i)) in qs
+    for (q_ptr, (i, &permutation_i)) in qs
         .iter_mut()
         .zip(permutation.iter().enumerate().skip(1))
         .rev()
@@ -239,36 +239,10 @@ where
         }
 
         if arr[0] == permutation_i {
-            *qq = i; // q:=i; when arr[0] == permutation[i]
+            *q_ptr = i; // q:=i; when arr[0] == permutation[i]
             forward_by_q(i, i, &mut even_tmp, &mut arr); // O(n) -> O((1/n)0.5n^2)
             continue;
         }
-
-        //   { arr[i] != permutation[i] }
-        //   { arr[0] != permutation[i] }
-
-        if (i & 1) == 1 {
-            // unrolled version of forward_by_q(i, 1, &mut even_tmp, &mut arr);
-            arr.swap(0, i - 1);
-            arr.swap(0, i); // we have already established arr[0] != permutation_i
-            *qq = i - 1; // if we have checked 1..=i-2 => q MUST be i-1 because it's not arr[i]
-            for q in 1..=i - 2 {
-                if permutation_i == arr[i] {
-                    *qq = q;
-                    break;
-                }
-                arr.swap(i, q);
-            }
-            if *qq & 1 == 0 {
-                arr.swap(0, i - 1);
-            }
-            continue;
-        }
-
-        // we have now established these pre-conditions:
-        //   { q > 0 } (that is, it will be because arr[i] != permutation_i)
-        //   { i >= 4 } \/ { i == 2 && arr[1] == permutation_i }
-        //   { i & 1 == 0 -> i is even }
 
         let idx = arr
             .iter()
@@ -276,11 +250,20 @@ where
             .take(i - 1)
             .position(|&e| e == permutation_i)
             .unwrap();
-        *qq = if i - idx > 3 { i - idx - 3 } else { 1 + idx };
+
+        //   { q > 0 } (that is, it will be because arr[i] != permutation_i)
+        //   { q < i } (that is, it will be because arr[0] != permutation_i)
+        let q = if (i & 1) == 1 {
+            if idx + 2 == i { 1 } else { idx + 2 }
+        } else {
+            //   { i >= 4 } \/ { i == 2 && arr[1] == permutation_i }
+            if i - idx > 3 { i - idx - 3 } else { 1 + idx }
+        };
+        *q_ptr = q;
 
         // Having established `q` we can now advance the prefix permutation by `q` in O(n)
         // in order to prepare &arr for the next loop iteration:
-        forward_by_q(i, *qq, &mut even_tmp, &mut arr);
+        forward_by_q(i, q, &mut even_tmp, &mut arr);
 
         /* Alternatively (for both even and odd cases):
            while permutation_i != arr[i] {
@@ -335,7 +318,7 @@ pub fn unrank_noprecomp(n: usize, k: usize) -> Box<[u8]> {
 pub fn unrank_noprecomp_gen<R, E, K>(identity: R, mut k: K) -> Box<[E]>
 where
     R: IntoIterator<Item = E>,
-    E: std::marker::Copy + std::fmt::Debug,
+    E: std::marker::Copy,
     K: for<'a> std::ops::Rem<&'a K, Output = K>
         + for<'a> std::ops::DivAssign<&'a K>
         + TryInto<usize>
@@ -424,7 +407,7 @@ where
     k: usize, // used exclusively for debugging
 }
 
-impl<E: Clone + std::marker::Copy + std::fmt::Debug> HeapsAlgorithm<E> {
+impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> HeapsAlgorithm<E> {
     ///
     /// Given an "alphabet", the [`Iterator`] yields the permutations of the alphabet.
     ///
@@ -920,7 +903,9 @@ fn test_sum_factorial_qs_1_6() {
     }
 }
 
-impl<E: Clone + std::marker::Copy + std::fmt::Debug> Iterator for HeapsAlgorithm<E> {
+impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Iterator
+    for HeapsAlgorithm<E>
+{
     // we will be counting with usize
     type Item = Box<[E]>;
 
