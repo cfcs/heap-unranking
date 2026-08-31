@@ -444,10 +444,9 @@ mod unittests {
         }
     }
 
-    /// Note: currently disabled because `nth` isn't implemented properly yet:
     #[test]
     fn test_heaps_algo_nth() {
-        for n in 1..=10 {
+        for n in 1..=9 {
             let mut heap1 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
             let mut last_k = 0;
             let fact = (1..=n).product();
@@ -455,38 +454,30 @@ mod unittests {
                 let p1 = heap1.next();
                 let p2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>()).nth(k);
                 assert_eq!(p1, p2, "n={n} k={k}: from k=0 to nth(k)");
+                last_k = k;
                 if k > 1 {
-                    //println!("-----nth(k-1) for k={k}");
                     let mut h3 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
                     h3.nth(k - 1);
-                    //println!("||  h3.next() after nth(k-1) leaves {:?}", p1);
                     let p3 = h3.next();
                     assert_eq!(p1, p3, "from 0 to nth(k-1);next() is equivalent to nth(k)");
-                    if n > 3 {
-                        if k > 5 && k < 10 {
-                            // test that nth() skips correctly relative to current position
-                            //println!("========================= multi-nth:");
-                            let x = k - 4;
-                            let y = k - x;
+                    for skip in [1, 2, 3, 4, 6, 7, 8, 9, 10, 30, 300] {
+                        if k > skip && k + 1 < fact {
+                            let y = k - skip - 1;
                             let mut h2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
-                            let _ = h2.nth(x); // x + 1
-                            //println!("x=={x} + y=={y} == {:?} k=={k}", x + y);
-                            let x2 = h2.nth(y); // y + 1
-
-                            /*println!(
-                                "k={k} x1.nth({x}):{:?} x2.nth({y}):{:?} == p1:{:?}",
-                                x1, x2, p1
-                            );*/
-                            //let p4 = h2.next();
+                            let x1 = h2.nth(skip);
+                            let x2 = h2.nth(y);
+                            assert_eq!(k, skip + 1 + y);
+                            assert_eq!(p1, x2, "k={k} skip={skip} y={y} fact={fact} x1={:?}", x1,);
+                            let mut h4 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+                            let _y3 = h4.nth(y);
+                            let y4 = h4.nth(skip);
                             assert_eq!(
-                                p1,
-                                x2,
-                                //"p4: {:?}", p4
+                                p1, y4,
+                                "stepping in the reverse order should yield the same y={y} skip={skip}."
                             );
                         }
                     }
                 }
-                last_k = k;
             }
             assert_eq!(
                 (1..=n).product::<usize>(),

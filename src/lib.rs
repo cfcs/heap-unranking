@@ -156,6 +156,7 @@ pub fn forward_by_q<E: std::marker::Copy>(
     even_tmp: &mut Vec<E>,
     permutation: &mut [E],
 ) {
+    debug_assert!(q > 0); // caller should handle that case
     debug_assert!(q <= n);
     debug_assert!(n < permutation.len());
     if n & 1 == 0 {
@@ -201,6 +202,86 @@ pub fn forward_by_q<E: std::marker::Copy>(
             permutation.copy_within(1..q - 1, 2);
             permutation[1] = permutation[n];
             permutation[n] = last_element;
+        }
+    }
+}
+
+///
+/// Inverse of [`forward_by_q()`].
+///
+#[inline]
+pub fn backward_by_q<E: std::marker::Copy>(
+    n: usize,
+    q: usize,
+    even_tmp: &mut Vec<E>,
+    permutation: &mut [E],
+) {
+    debug_assert!(0 < q);
+    debug_assert!(q <= n);
+    debug_assert!(n < permutation.len());
+
+    if n & 1 == 0 {
+        if n < 4 {
+            // Special case for n == 2:
+            permutation.swap(1, 2);
+            permutation.swap(0, 1 + (q & 1));
+            return;
+        }
+
+        even_tmp.clear();
+        even_tmp.resize(n + 1, permutation[0]);
+
+        let len = n + 1;
+        even_tmp[len - q] = permutation[0];
+        even_tmp[n - q] = permutation[n];
+        even_tmp[len + 1 - q - len * (1 == q) as usize] = permutation[n - 1];
+        even_tmp[len + 2 - q - len * (q <= 2) as usize] = permutation[n - 2];
+
+        let start = len + 3 - q - len * (q <= 3) as usize;
+        let pivot = (len - start).min(n - 3);
+
+        even_tmp[start..start + pivot].copy_from_slice(&permutation[1..=pivot]);
+        even_tmp[..n - 3 - pivot].copy_from_slice(&permutation[1 + pivot..n - 2]);
+
+        permutation[0] = even_tmp[0];
+        permutation[n - 1] = even_tmp[1];
+        permutation[n - 2] = even_tmp[2];
+        permutation[1..n - 2].copy_from_slice(&even_tmp[3..n]);
+        permutation[n] = even_tmp[n];
+    } else {
+        if q >= 2 {
+            let first_element = permutation[1];
+            permutation.copy_within(2..q, 1);
+            permutation[q - 1] = permutation[n];
+            permutation[n] = first_element;
+        }
+        if q & 1 == 1 {
+            permutation.swap(0, n - 1);
+        }
+        permutation.swap(n, n - 1);
+    }
+}
+
+#[test]
+fn test_forward_backward_inverse() {
+    let mut scratch = Vec::with_capacity(13);
+
+    for n in [2, 3, 4, 5, 6, 7, 8, 10, 11, 12] {
+        for q in 1..=n {
+            let identity: Vec<usize> = (0..=n).collect();
+            let mut forward_state = identity.clone();
+
+            forward_by_q(n, q, &mut scratch, &mut forward_state);
+
+            assert_ne!(forward_state, identity);
+
+            backward_by_q(n, q, &mut scratch, &mut forward_state);
+
+            assert_eq!(
+                forward_state, identity,
+                "n={n} q={q} identity={:?} state={:?}",
+                identity, forward_state
+            );
         }
     }
 }
@@ -643,164 +724,6 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Heaps
 
         Some(&self.state)
     }
-
-    ///
-    /// This doesn't work yet, but the idea is to skip `k` steps ahead.
-    ///
-    pub fn nth_optimized(&mut self, k: usize) -> Option<<HeapsAlgorithm<E> as Iterator>::Item> {
-        // We ought to be able to use forward_by_q() to transform the self.state,
-        // and to manipulate the self.counters by encoding `k` as factoradic digits,
-        // to figure out how many steps of forward_by_q().
-        // We may have to .next() or .previous() some steps to achieve block alignment.
-
-        let mut o: HeapsAlgorithm<usize> =
-            HeapsAlgorithm::new((0..self.state.len()).collect::<Box<[usize]>>());
-        {
-            o.counters = get_qs(self.state.len() + 1, 0, k, vec![])
-                .into_iter()
-                .rev()
-                .collect();
-            let mut even_tmp: Vec<E> = Vec::with_capacity(o.state.len() + 1);
-            let mut bigger: &Box<[usize]>;
-            let mut smaller: &Box<[usize]>;
-            bigger = &self.counters;
-            smaller = &o.counters;
-            let mut sum: Box<[isize]> = (0..self.counters.len()).map(|_| 0).collect();
-            for (_i, (a, b)) in self
-                .counters
-                .iter()
-                .zip(o.counters.iter())
-                .enumerate()
-                .rev()
-            {
-                if a == b {
-                    continue;
-                }
-                if a > b {
-                    bigger = &self.counters;
-                    if self.i != 0 {
-                        sum[self.i] = 1;
-                    }
-                    smaller = &o.counters;
-                    println!("self > o");
-                    break;
-                }
-                if b > a {
-                    smaller = &self.counters;
-                    if self.i != 0 {
-                        sum[self.i] -= 1;
-                    }
-                    bigger = &o.counters;
-                    println!("o > self so sum[{:?}] -= 1", self.i);
-                    break;
-                }
-            }
-            println!("big: {:?}", bigger);
-            println!("low: {:?}", smaller);
-            // factorial sub:
-            let mut borrow = 0_isize;
-            for i in 1..self.counters.len() {
-                println!(
-                    "  sum[{i}] (was {:?}) += {:?} - {borrow} - {:?}",
-                    sum[i], bigger[i], smaller[i]
-                );
-                sum[i] += (bigger[i] as isize) - borrow - (smaller[i] as isize);
-                borrow = 0;
-                if sum[i] < 0 {
-                    borrow = (0 - sum[i]) / (i as isize);
-                    assert_ne!(0, borrow);
-                    println!("  [{i}]borrow: {:?}   sum[{i}]=={:?}", borrow, sum[i]);
-                    sum[i] += borrow * (i as isize + 1);
-                    if sum[i] > i as isize {
-                        println!("we borrowed too much: {:?} > {i}", sum[i]);
-                    }
-                }
-            }
-            println!("sum: {:?}", sum);
-            let mut u_sum: Box<[usize]> =
-                (0..self.counters.len()).map(|i| sum[i] as usize).collect();
-            for (i, x) in o.counters.iter_mut().enumerate() {
-                *x = sum[i] as usize;
-            }
-            let qs: Vec<usize> = u_sum.iter().skip(1).copied().collect();
-            // Transform the permutation state by `n` steps:
-            for (n, q) in (1..o.state.len())
-                .zip(qs) // TODO we should not clone here
-                .rev()
-                .filter(|(_, q)| !q.is_zero())
-            {
-                forward_by_q::<E>(n, q, &mut even_tmp, &mut self.state[..]);
-                println!("  fwd [{n}] by q={q}: {:?}", self.state);
-            }
-            o.i = fixup_factorial(&mut o.counters);
-            if self.i != 0 {
-                println!("WE HAVE A SELF i:{:?} and we would like to swap!", self.i);
-                if self.i & 1 == 0 {
-                    println!("  swap(0, {:?});", self.i);
-                } else {
-                    println!("  swap(X, {:?}); //ctrs: {:?}", self.i, self.counters);
-                    // this ... seems to work for some cases:
-                    //self.state.swap(0,2);
-                    //self.state.swap(0,3);
-                    //self.state.swap(3, 2);
-                }
-            }
-            let sumi = fixup_factorial(&mut u_sum);
-            println!("  SUMS: self:{:?} o:{:?} sumi:{sumi}", self.i, o.i);
-            if u_sum.len() <= 4 && sumi != 0 {
-                println!("    sumi:{sumi}");
-                // This swap will be performed by .next(), so we perform it in reverse here:
-                if sumi & 1 == 0 {
-                    self.state.swap(0, sumi);
-                    println!(
-                        "    heaps_state_at_k: even branch: o.i={:?}: counters={:?} state={:?}",
-                        o.i, u_sum, self.state
-                    );
-                } else {
-                    println!("....odd before: {:?}", self.state);
-                    self.state.swap(u_sum[sumi], sumi);
-                    println!(
-                        "    heaps_state_at_k: odd branch: o.i={:?}: counters={:?} state={:?} self.counters={:?} o.counters={:?}",
-                        o.i, u_sum, self.state, self.counters, o.counters
-                    );
-                }
-            } else {
-                println!("  sumi zero");
-            }
-            //println!("o.state: {:?}", o.state);
-            //let mut scratch: Vec<E> = Vec::with_capacity(o.state.len() + 1);
-            //scratch.clear();
-            //scratch.extend(o.state.iter().map(|&p| self.state[p]));
-            // see kat.rs:precompute_kats:f(), we should probably just use that directly
-            // and do away with the precomputation step?
-            //self.state[0..scratch.len()].copy_from_slice(&scratch[..]);
-            //self.state.copy_from_slice(&o.state);
-        }
-
-        //println!("self.counters: {:?}", &self.counters);
-        // now we need to add together the factoradic digits of
-        // o and self, and restore the `i`:
-        self.counters = sum_factorial(self.i, &self.counters, o.i, &o.counters);
-        println!("  sum_factorial before fixup: {:?}", self.counters);
-        //println!("self.i was {:?} o.i=={:?}", self.i, o.i);
-        //println!("self.counters: before fixup {:?}", &self.counters);
-        self.i = fixup_factorial(&mut self.counters);
-        println!(
-            "  SUM counters after fixup: {:?} i=={:?}",
-            self.counters, self.i
-        );
-        self.k += k;
-        println!(
-            "nth alen:{:?} k={k} self.i:={:?} o.i=={:?} self.counters:{:?} self.state:{:?}",
-            self.state.len(),
-            self.i,
-            o.i,
-            self.counters,
-            self.state
-        );
-
-        self.next()
-    }
 }
 
 ///
@@ -985,24 +908,103 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Itera
     ///
     /// Skip `n` outputs and return the next permutation.
     ///
-    /// `nth()` is very similar to [`HeapsAlgorithm::at_k`]`(n, k-self.k)`
-    /// except it's a relative jump from the current `k`.
+    /// `nth()` is very similar to [`HeapsAlgorithm::at_k`]`(n, k-old_k)`
+    /// except it's a relative jump from the current rank.
     ///
-    /// It should be equal to [`HeapsAlgorithm::at_k`]`(n, k-self.k)`,
-    /// without relying on maintaining a `self.k`, so we can avoid
-    /// dealing with overflows.
+    /// # Examples
+    /// ```
+    ///   # use heap_unranking::HeapsAlgorithm;
+    ///   let n = 4;
+    ///   let identity = (0..n).collect::<Box<[usize]>>();
+    ///   let mut h1 = HeapsAlgorithm::new(identity.clone());
+    ///   let mut h2 = HeapsAlgorithm::new(identity.clone());
     ///
-    fn nth(&mut self, k: usize) -> Option<Self::Item> {
-        if self.i == 0 && k > self.state.len() {
+    ///   h1.next(); // k=0
+    ///   h1.next(); // k=1
+    ///   let h1_p2 = h1.next(); // k=2
+    ///   let h2_p2  = h2.nth(2); // k=2
+    ///   assert_eq!(h1_p2, h2_p2, "k=2");
+    ///
+    ///   assert_eq!(h1.next(), h2.nth(0), "k=3");
+    ///   assert_eq!(h1.next(), h2.nth(0), "k=4");
+    ///   assert_eq!(h1.next(), h2.nth(0), "k=5");
+    ///
+    ///   h1.next(); // k=6
+    ///   let h1_p7 = h1.next();
+    ///   let h2_p7 = h2.nth(1);
+    ///   assert_eq!(h1_p7, Some([1,3,0,2].into()), "k=7 kat");
+    ///   assert_eq!(h1_p7, h2_p7, "k=7 perms");
+    ///
+    ///   assert_eq!(h1.next(), Some([0, 3, 1, 2].into()), "k=8");
+    ///   assert_eq!(h2.next(), Some([0, 3, 1, 2].into()), "k=8");
+    /// ```
+    ///
+    /// ```
+    /// # use heap_unranking::HeapsAlgorithm;
+    ///
+    /// let steps = [0, 1, 2, 3, 5, 9, 10, 13, 23, 24, 25, 26, 64, 119, 124, 799, 1024, 99_999];
+    /// for n in 1..20 {
+    ///   let identity = (0..n).collect::<Box<[usize]>>();
+    ///
+    ///   for k in steps {
+    ///     if k >= (1..=n).product() { continue; }
+    ///     let mut algo_slow = HeapsAlgorithm::new(identity.clone());
+    ///     let mut algo_fast = HeapsAlgorithm::new(identity.clone());
+    ///     let res_slow = {
+    ///        for _ in 0..k { algo_slow.step(|_| true); };
+    ///        algo_slow.next()
+    ///     };
+    ///     let res_fast = algo_fast.nth(k);
+    ///     assert_eq!(res_slow, res_fast, "nth() n={n} k={k}");
+    ///   }
+    /// }
+    /// ```
+    fn nth(&mut self, k: usize) -> Option<<HeapsAlgorithm<E> as Iterator>::Item> {
+        if k < self.state.len() {
+            // We NEED a special case for k==0 here, but for small `k` the iterative is cheaper anyway.
+            for _ in 1..=k {
+                self.step(|_| true);
+            }
+            return self.next();
+        }
+
+        if self.i == 0 {
             // Special case: we know how to skip from offset 0 to k:
             *self = Self::at_k(self.state.clone(), k);
             return self.next();
         }
 
-        // This runs in O(k) == O(n!):
-        for _ in self.i..k {
-            self.step(|_| true);
+        let mut qs_k = vec![0; self.state.len()];
+        let mut temp_k = k;
+        for i in 1..self.state.len() {
+            qs_k[i] = temp_k % (i + 1);
+            temp_k /= i + 1;
+            if temp_k == 0 {
+                break;
+            }
         }
+
+        // We know how to forward_by_q() the factorial sum, but forward_by_q()
+        // assumes self.state is in the initial "identity" permutation.
+        // We could store the identity inside the HeapsAlgorithm struct,
+        // or  work out a forward_by_q() that could handle intermediate self.state values.
+        // Or like the option below, walk it back to the initial position:
+        let mut scratch: Vec<E> = Vec::with_capacity(self.state.len() + 1);
+        for (n, &q) in self.counters.iter().enumerate().skip(1) {
+            if q != 0 {
+                backward_by_q(n, q, &mut scratch, &mut self.state);
+            }
+        }
+        self.counters = sum_factorial(self.i, &self.counters, 0, &qs_k.into());
+
+        for (n, &q) in self.counters.iter().enumerate().skip(1).rev() {
+            if q != 0 {
+                forward_by_q(n, q, &mut scratch, &mut self.state);
+            }
+        }
+        let _ = fixup_factorial(&mut self.counters);
+
+        self.state.swap(0, 1); // prime for .next()
         self.next()
     }
 }
