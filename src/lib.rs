@@ -264,9 +264,10 @@ pub fn backward_by_q<E: std::marker::Copy>(
 
 #[test]
 fn test_forward_backward_inverse() {
-    let mut scratch = Vec::with_capacity(13);
+    let ns = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 100, 1234];
+    let mut scratch = Vec::with_capacity(ns.iter().max().unwrap()+1);
 
-    for n in [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 100, 1234] {
+    for n in ns {
         for q in 1..=n {
             let identity: Vec<usize> = (0..=n).collect();
             let mut forward_state = identity.clone();
