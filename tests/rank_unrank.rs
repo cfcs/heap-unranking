@@ -223,7 +223,7 @@ mod unittests {
         for n in 1..=11usize {
             let mut data: Vec<u8> = (0..(n as u8)).collect();
             let heap = permutohedron::Heap::new(&mut data);
-            let heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let heap2 = HeapsAlgorithm::new(0..n);
             let mut last_k = 0;
             for ((k, p), p2) in heap.enumerate().zip(heap2) {
                 assert_eq!(
@@ -268,7 +268,7 @@ mod unittests {
     #[test]
     fn test_heaps_algo_previous_4() {
         let n = 3;
-        let mut heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        let mut heap2 = HeapsAlgorithm::new(0..n);
         let h0 = heap2.next().unwrap();
         let h1 = heap2.next().unwrap();
         let h2 = heap2.next().unwrap();
@@ -298,14 +298,14 @@ mod unittests {
     fn test_heaps_algo_previous_underflow() {
         let n = 4_usize;
 
-        let mut heap1: HeapsAlgorithm<usize> = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        let mut heap1: HeapsAlgorithm<usize> = HeapsAlgorithm::new(0..n);
         assert_eq!(None, heap1.previous());
         assert_eq!([0, 1, 2, 3], heap1.next().unwrap()[..]);
         assert_eq!([1, 0, 2, 3], heap1.next().unwrap()[..]);
         assert_eq!([2, 0, 1, 3], heap1.next().unwrap()[..]);
         assert_eq!([1, 0, 2, 3], heap1.previous().unwrap()[..]);
 
-        let mut heap2: HeapsAlgorithm<usize> = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+        let mut heap2: HeapsAlgorithm<usize> = HeapsAlgorithm::new(0..n);
         assert_eq!([0, 1, 2, 3], heap2.next().unwrap()[..]);
         assert_eq!(None, heap2.previous());
         assert_eq!([0, 1, 2, 3], heap2.next().unwrap()[..]);
@@ -388,28 +388,28 @@ mod unittests {
     #[test]
     fn test_heaps_algo_nth() {
         for n in 1..=9 {
-            let mut heap1 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let mut heap1 = HeapsAlgorithm::new(0..n);
             let mut last_k = 0;
             let fact = (1..=n).product();
             for k in 0..fact {
                 let p1 = heap1.next();
-                let p2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>()).nth(k);
+                let p2 = HeapsAlgorithm::new(0..n).nth(k);
                 assert_eq!(p1, p2, "n={n} k={k}: from k=0 to nth(k)");
                 last_k = k;
                 if k > 1 {
-                    let mut h3 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+                    let mut h3 = HeapsAlgorithm::new(0..n);
                     h3.nth(k - 1);
                     let p3 = h3.next();
                     assert_eq!(p1, p3, "from 0 to nth(k-1);next() is equivalent to nth(k)");
                     for skip in [1, 2, 3, 4, 6, 7, 8, 9, 10, 30, 300] {
-                        if k > skip && k + 1 < fact {
+                        if k > skip && k < fact {
                             let y = k - skip - 1;
-                            let mut h2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+                            let mut h2 = HeapsAlgorithm::new(0..n);
                             let x1 = h2.nth(skip);
                             let x2 = h2.nth(y);
                             assert_eq!(k, skip + 1 + y);
                             assert_eq!(p1, x2, "k={k} skip={skip} y={y} fact={fact} x1={:?}", x1,);
-                            let mut h4 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+                            let mut h4 = HeapsAlgorithm::new(0..n);
                             let _y3 = h4.nth(y);
                             let y4 = h4.nth(skip);
                             assert_eq!(
@@ -434,7 +434,7 @@ mod unittests {
         // check that rank_noprecomp() matches the traditional Heap's algorithm's
         // outputs (from the permutohedron crate):
         for n in 1..=10usize {
-            let heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let heap2 = HeapsAlgorithm::new(0..n);
             let mut last_k = 0;
             for (k, p) in heap2.enumerate() {
                 let p2 = unrank_bigint(n, BigUint::from(k));
@@ -454,7 +454,7 @@ mod unittests {
     fn test_heaps_algo_and_unranking_11_40() {
         // check that unrank_bigint matches our own permutations
         for n in 11..=40usize {
-            let heap2 = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+            let heap2 = HeapsAlgorithm::new(0..n);
             let mut last_k = 0;
             for (k, p) in heap2.enumerate() {
                 let p2 = unrank_bigint(n, BigUint::from(k));

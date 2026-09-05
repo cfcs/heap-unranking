@@ -266,7 +266,7 @@ pub fn backward_by_q<E: std::marker::Copy>(
 fn test_forward_backward_inverse() {
     let mut scratch = Vec::with_capacity(13);
 
-    for n in [2, 3, 4, 5, 6, 7, 8, 10, 11, 12] {
+    for n in [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 100, 1234] {
         for q in 1..=n {
             let identity: Vec<usize> = (0..=n).collect();
             let mut forward_state = identity.clone();
@@ -516,9 +516,8 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Heaps
     pub fn new<R>(initial: R) -> HeapsAlgorithm<E>
     where
         R: IntoIterator<Item = E>,
-        Box<[E]>: From<R> + Clone,
     {
-        let state: Box<[E]> = initial.into();
+        let state: Box<[E]> = initial.into_iter().collect();
         let n = state.len();
         HeapsAlgorithm {
             state,
@@ -652,7 +651,7 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Heaps
     /// ## Literal examples
     /// ```rust
     /// # use heap_unranking::HeapsAlgorithm;
-    /// let mut heap1 : HeapsAlgorithm<usize> = HeapsAlgorithm::new((0..4).collect::<Vec<_>>());
+    /// let mut heap1 : HeapsAlgorithm<usize> = HeapsAlgorithm::new(0..4);
     ///
     /// assert_eq!(None, heap1.previous());
     ///
@@ -685,7 +684,7 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Heaps
     /// # use heap_unranking::HeapsAlgorithm;
     /// for n in 1..100 {
     ///   let steps = if n >= 6 { 200 } else { (1..=n).product::<usize>() - 1 };
-    ///   let mut heap2 : HeapsAlgorithm<usize> = HeapsAlgorithm::new((0..n).collect::<Vec<_>>());
+    ///   let mut heap2 : HeapsAlgorithm<usize> = HeapsAlgorithm::new(0..n);
     ///   let first_x: Vec<_> = (0..steps).map(|_| heap2.next()).collect();
     ///   heap2.next(); // advance one (the midpoint)
     ///   for (k, old) in first_x.iter().enumerate().rev() {
@@ -915,9 +914,8 @@ impl<E: Clone + std::marker::Copy + std::fmt::Debug + std::cmp::PartialEq> Itera
     /// ```
     ///   # use heap_unranking::HeapsAlgorithm;
     ///   let n = 4;
-    ///   let identity = (0..n).collect::<Box<[usize]>>();
-    ///   let mut h1 = HeapsAlgorithm::new(identity.clone());
-    ///   let mut h2 = HeapsAlgorithm::new(identity.clone());
+    ///   let mut h1 = HeapsAlgorithm::new(0..n);
+    ///   let mut h2 = HeapsAlgorithm::new(0..n);
     ///
     ///   h1.next(); // k=0
     ///   h1.next(); // k=1
