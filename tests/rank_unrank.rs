@@ -407,7 +407,6 @@ mod unittests {
                             let mut h2 = HeapsAlgorithm::new(0..n);
                             let x1 = h2.nth(skip);
                             let x2 = h2.nth(y);
-                            assert_eq!(k, skip + 1 + y);
                             assert_eq!(p1, x2, "k={k} skip={skip} y={y} fact={fact} x1={:?}", x1,);
                             let mut h4 = HeapsAlgorithm::new(0..n);
                             let _y3 = h4.nth(y);

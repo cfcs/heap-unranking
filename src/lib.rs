@@ -319,26 +319,18 @@ where
             continue; // q:=0; O(1) -> O((1/n)0.5n)
         }
 
-        if arr[0] == permutation_i {
-            *q_ptr = i; // q:=i; when arr[0] == permutation[i]
-            forward_by_q(i, i, &mut even_tmp, &mut arr); // O(n) -> O((1/n)0.5n^2)
-            continue;
-        }
-
-        let idx = arr
-            .iter()
-            .skip(1)
-            .take(i - 1)
-            .position(|&e| e == permutation_i)
-            .unwrap();
-
-        //   { q > 0 } (that is, it will be because arr[i] != permutation_i)
-        //   { q < i } (that is, it will be because arr[0] != permutation_i)
-        let q = if (i & 1) == 1 {
-            if idx + 2 == i { 1 } else { idx + 2 }
-        } else {
-            //   { i >= 4 } \/ { i == 2 && arr[1] == permutation_i }
-            if i - idx > 3 { i - idx - 3 } else { 1 + idx }
+        let q = {
+            let idx = arr[..i] // { idx < i } (because arr[i] != permutation_i)
+                .iter()
+                .position(|&e| e == permutation_i)
+                .unwrap();
+            if idx == 0 {
+                i
+            } else if (i & 1) == 1 {
+                if idx + 1 == i { 1 } else { idx + 1 }
+            } else {
+                if i - idx > 2 { i - idx - 2 } else { idx }
+            }
         };
         *q_ptr = q;
 
