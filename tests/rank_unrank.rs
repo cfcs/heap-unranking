@@ -241,65 +241,6 @@ mod unittests {
         }
     }
 
-    /*
-            /*
-                if i == 2 && arr[1] == permutation_i {
-                 *qq = 1; // special case for len 3 not covered by the two rules above for [0], [i]
-                arr.swap(1, i);
-                arr.swap(0, 1);
-                continue;
-            }
-             */
-
-                // It is worth noting that below the only operation we perform that involves
-            // the elements of even_tmp / permutation_i is comparing whether or not a given element
-            // is equal to permutation_i or not, so I used a bitmap below to amortize the O(n^2)
-            // looping over forward_by_q() for the even `i`s, arriving at this
-            // [amortized] O(n) solution. First we use the bitmap version of forward_by_q, tracking
-            // only the permutation[i], and we use that to find `q`.
-            // O(0.5n * 0.5 n * ceil(n/wordsize))
-            for it in 1..i {
-                // for q in 1..i
-                if bmap & (1 << i) != 0 {
-                    break;
-                } // if permutation_i == tmp[i]
-                if bmap & (1 << (i - 1)) != 0
-                /* tmp[i - 1] == permutation_i*/
-                {
-                    /* Essentially, if tmp[i-1] == permutation_i:
-                            tmp[i - 2] = tmp[i - 1];
-                            tmp[i - 1] = u8::MAX; // unset ; we don't want this to remain permutation_i
-                    */
-                    bmap |= 1 << (i - 2);
-                    bmap &= !(1 << (i - 1)); // if bmap&1 then this step is redundant since we set it below
-                    // Since assert_eq!(bmap & (1<<i), 0) doesn't change, we simulate continue; and
-                    // proceed:
-                    q += 1;
-            continue;
-                } else {
-                    q += 1;
-                }
-                bmap |= (bmap & 1) << (i - 1); // set [i-1] if bmap[0] is set, can continue if rhs!=0
-
-                // emap is what we call even_tmp in the forward_by_q()
-                let mut emap = bmap & 1; // [0]:=tmp[0]
-
-                emap |= (bmap >> (i - 2)) & 2; // [1]:=tmp[i-1]
-                emap |= (bmap >> (i - 4)) & 4; // [2]:=tmp[i-2]
-
-                emap |= (bmap & ((1 << (i - 2)) - 1)) << 2; // [3..] = tmp[1..i-2]
-
-                bmap |= (emap & (1 << (i - 1))) << 1; // set [i] if even_tmp[i-1] is set.
-                // COULD continue; if rhs!=0
-
-                bmap |= (emap & (1 << i)) >> i; // set bmap[0] if even_tmp[i] == permutation_i
-                // COULD continue; if rhs != 0
-
-                let esuffix = (emap >> 2) & ((1 << (i - 3)) - 1);
-                bmap |= (((!bmap) >> 1) & esuffix) << 1; // secondcopy_from_slice(even_tmp, ..n)
-            }
-    */
-
     #[test]
     fn test_heaps_algo_at_k_output_1_10() {
         // check that rank_noprecomp() matches the traditional Heap's algorithm's
