@@ -2,6 +2,14 @@
 name = "heap-unranking"
 version = "0.1.0"
 edition = "2024"
+homepage = "https://github.com/cfcs/heap-unranking"
+repository = "https://github.com/cfcs/heap-unranking"
+license = "MIT"
+
+include = [
+  "*/*.rs",
+  "*.md"
+]
 
 # we want optional support for arbitrary size:
 [dependencies]
@@ -11,3 +19,16 @@ num-integer = ">=0.1.47"
 
 [dev-dependencies]
 permutohedron = "0.2.4"
+criterion = {version = "0.8", features = ["html_reports"]}
+rand =">=0.10.2"
+
+[profile.release]
+debug = true # leave debug symbols in
+
+[[bench]]
+name = "next_previous"
+harness = false
+
+[[bench]]
+name = "treapheaps_forward"
+harness = false

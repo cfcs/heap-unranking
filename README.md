@@ -15,6 +15,8 @@
 - `previous()`: Run Heap's algorithm in reverse
   - `step()`: Run Heap's algorithm (traditional implementation)
 
+- `nth()`: Skip `n` steps of Heap's algorithm, calculating the resumption state for the iterative algorithm.
+
 ## Introduction
 
 Heap's algorithm generates all permutations of an array of length `n` by swapping exactly two elements at each "step". Its simplicity of implementation and low overhead per step sometimes makes it an attractive alternative to lexicographical enumeration of permutations which requires division calculations that can be costly.
@@ -33,6 +35,8 @@ This yields an $O(n^3)$ solution, which is "slow", but it's a lot faster than $O
 3. It is perhaps also worth mentioning that fewer than $n-1$ prefixes are needed for small $k$; for example $k = 0$ does not make use of the prefix-enabled skipping.
 
 4. **Update Aug 2026:** `unrank_noprecomp_gen()` runs in $O(\frac{1}{2}n^2)$ time without the precomputations by unrolling the transformations performed by the precomputation tables so the work for each prefix is $O(n)$ instead of $O(n^2)$. `rank_noprecomp_gen()` uses the same trick for ranking.
+
+5. **Updated Sep 2026:**: `unrank_treap()` runs in $O(n \log{n})$, same concept as `unrank_noprecomp_gen`, but using an [Implicit Treap](https://unseel.com/cs/treap-implicit-key) to defer serialization of the intermediary transpositions.
 
 ## Source code index
 
@@ -56,6 +60,12 @@ The implementations in this repo work on the indices. Whenever you're asked to p
 - `pub fn step()`: Step through Heap's algorithm (used by `::next()`)
 - `pub fn previous()`: Step through Heap's algorithm in reverse(!) - this was fun to write, haven't seen that anywhere else.
 - `pub fn ::at_k(k)`: Unrank such that `h.next()` yields permutation `k`, $O(\frac{1}{2}n^2)$, implemened with `unrank_noprecomp_gen()`.
+- `pub fn ::nth(k)`: Like `::at_k(k)`, but skips $n$ steps ahead from an existing state.
+
+##### For large arrays
+- `src/treapheaps.rs` has an `Implicit Treap`-backed `forward_by_qs()` function to replace $n$ calls to `forward_by_q()`.
+  The implementation is binary, so `forward_by_qs()` runs in $O(n \log_2{n})$.
+  - `unrank_treap()`: outperforms `unrank_noprecomp_gen()` for large $n \gtrapprox 22'000$.
 
 ### Python source code in `heaps.py`:
 - `def rank[E](identity, permutation: list[E]) -> int`: return the `k`'th output of Heap's algorithm

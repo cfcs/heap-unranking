@@ -991,4 +991,108 @@ mod kat_tests {
         assert_eq!(573, rank_noprecomp(&x3));
         assert_eq!(2554, rank_noprecomp(&x4));
     }
+
+    ///
+    /// Test that ranking works for custom types
+    ///
+    #[test]
+    fn test_rank_custom_types() {
+        #[derive(Debug, Copy, PartialEq, Clone)]
+        enum C {
+            R,
+            G,
+            B,
+        }
+        assert_eq!(
+            0,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::G, C::B], &[C::R, C::G, C::B])
+        );
+        assert_eq!(0, rank_noprecomp_gen::<_, _, usize>([0, 1, 2], &[0, 1, 2]));
+        assert_eq!(
+            1,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::G, C::B], &[C::G, C::R, C::B])
+        );
+        assert_eq!(1, rank_noprecomp_gen::<_, _, usize>([0, 1, 2], &[1, 0, 2]));
+        assert_eq!(
+            2,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::G, C::B], &[C::B, C::R, C::G])
+        );
+        assert_eq!(2, rank_noprecomp_gen::<_, _, usize>([0, 1, 2], &[2, 0, 1]));
+        assert_eq!(
+            3,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::G, C::B], &[C::R, C::B, C::G])
+        );
+        assert_eq!(3, rank_noprecomp_gen::<_, _, usize>([0, 1, 2], &[0, 2, 1]));
+        assert_eq!(
+            4,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::G, C::B], &[C::G, C::B, C::R])
+        );
+        assert_eq!(4, rank_noprecomp_gen::<_, _, usize>([0, 1, 2], &[1, 2, 0]));
+        assert_eq!(
+            5,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::G, C::B], &[C::B, C::G, C::R])
+        );
+        assert_eq!(5, rank_noprecomp_gen::<_, _, usize>([0, 1, 2], &[2, 1, 0]));
+        // change identity, check we rank relative to identity (RBG instead of RGB):
+        assert_eq!(
+            0,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::B, C::G], &[C::R, C::B, C::G])
+        );
+        assert_eq!(
+            1,
+            rank_noprecomp_gen::<_, _, usize>([C::R, C::B, C::G], &[C::B, C::R, C::G])
+        );
+    }
+
+    ///
+    /// Test that unranking works for custom types
+    ///
+    #[test]
+    fn test_unrank_custom_types() {
+        #[derive(Debug, Copy, PartialEq, Clone)]
+        enum C {
+            R,
+            G,
+            B,
+        }
+        let id = [C::R, C::G, C::B];
+        for (k, exp) in [
+            [C::R, C::G, C::B],
+            [C::G, C::R, C::B],
+            [C::B, C::R, C::G],
+            [C::R, C::B, C::G],
+            [C::G, C::B, C::R],
+            [C::B, C::G, C::R],
+        ]
+        .iter()
+        .enumerate()
+        {
+            assert_eq!(exp[..], unrank_noprecomp_gen(id, k)[..], "k={k}");
+            assert_eq!(
+                exp[..],
+                heap_unranking::treapheaps::unrank_treap(id, k)[..],
+                "k={k}"
+            );
+        }
+        // change identity, check we rank relative to identity (RBG instead of RGB):
+        let id2 = [C::R, C::B, C::G];
+        for (k, exp) in [
+            [C::R, C::B, C::G],
+            [C::B, C::R, C::G],
+            [C::G, C::R, C::B],
+            [C::R, C::G, C::B],
+            [C::B, C::G, C::R],
+            [C::G, C::B, C::R],
+        ]
+        .iter()
+        .enumerate()
+        {
+            assert_eq!(exp[..], unrank_noprecomp_gen(id2, k)[..]);
+            assert_eq!(
+                exp[..],
+                heap_unranking::treapheaps::unrank_treap(id2, k)[..],
+                "k={k}"
+            );
+        }
+    }
 }

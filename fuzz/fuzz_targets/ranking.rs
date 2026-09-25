@@ -5,6 +5,7 @@ use libfuzzer_sys::fuzz_target;
 use std::sync::OnceLock;
 
 use heap_unranking::precompute::{precompute, rank, unrank};
+use heap_unranking::treapheaps::rank_treap;
 use heap_unranking::*;
 
 #[derive(Debug, Arbitrary)]
@@ -31,11 +32,14 @@ fuzz_target!(|args: NK| {
     let permutation = unrank_noprecomp(n, args.k);
     let recovered_k = rank_noprecomp(&permutation);
     assert_eq!(args.k, recovered_k);
+    let treap_k = rank_treap::<_, _, _>(0..n as u8, &permutation);
+    assert_eq!(args.k, treap_k);
     let prefixes = PREFIXES.get_or_init(|| precompute(20));
     let r_k = rank(&prefixes, permutation.clone());
     assert_eq!(args.k, r_k);
     let ur = unrank(&prefixes, n, args.k);
     assert_eq!(permutation, ur);
+
     /* this is something like 8 times slower than all of the above:
     let r_ur : Box<[u8]> = unrank_recursive(n, args.k).into();
     assert_eq!(r_ur, ur);

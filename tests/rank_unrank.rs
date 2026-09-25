@@ -70,13 +70,14 @@ mod unittests {
                     None => factorial_n = usize::MAX,
                 }
             }
-            let k = rng.gen_range(0, factorial_n);
+            let k: usize = rng.gen_range(0, factorial_n);
             let perm = unrank(&precomp, n, k);
             let perm2 = unrank_noprecomp(n, k);
             assert_eq!(perm, perm2);
             let recovered2 = rank_noprecomp(&perm);
             assert_eq!(k, recovered2);
-            let recovered = rank(&precomp, perm);
+            heap_unranking::treapheaps::rank_treap::<_, _, usize>(0..n as u8, &perm[..]);
+            let recovered: usize = rank(&precomp, perm);
             assert_eq!(k, recovered);
         }
     }
@@ -195,7 +196,6 @@ mod unittests {
             for (k, p) in heap.enumerate() {
                 let k2 = rank_noprecomp(&p);
                 assert_eq!(k, k2, "rank_noprecomp({:?}) == {k}", p);
-                //println!("PASSED: {k2} for n={n}");
             }
         }
     }
@@ -206,7 +206,6 @@ mod unittests {
         let n = 4;
         let mut last_k = 0;
         for (k, _p) in HeapsAlgorithm::new::<Vec<&str>>(vec!["a", "b", "c", "d"]).enumerate() {
-            // println!("{k}: {:?}", p);y
             last_k = k;
         }
         assert_eq!(

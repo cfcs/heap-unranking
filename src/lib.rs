@@ -8,6 +8,7 @@
 //! - [`HeapsAlgorithm::previous()`]: Heap's algorithm in reverse, step-by-step
 //!
 pub mod precompute;
+pub mod treapheaps;
 
 ///
 /// Functional/recursive implementation of factorizing k into factoradic digits
@@ -265,7 +266,7 @@ pub fn backward_by_q<E: std::marker::Copy>(
 #[test]
 fn test_forward_backward_inverse() {
     let ns = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 100, 1234];
-    let mut scratch = Vec::with_capacity(ns.iter().max().unwrap()+1);
+    let mut scratch = Vec::with_capacity(ns.iter().max().unwrap() + 1);
 
     for n in ns {
         for q in 1..=n {
@@ -287,19 +288,78 @@ fn test_forward_backward_inverse() {
     }
 }
 
-use num_traits::ConstOne;
 use num_traits::Zero;
 
+///
+/// Rank a permutation, identifying how many steps of Heap's algorithm would
+/// be needed to arrive at `permutation`.
+///
+/// # Non-unique identities:
+/// The identity may not be unique. Consider an identity of `A, C, A, B`.
+/// For such permutations there are multiple valid ranks, and a ranking algorithm
+/// could return either the rank relative to `0,1,2,3` or `2,1,0,3`.
+///
+/// ```rust
+/// # use heap_unranking::rank_noprecomp_gen;
+/// assert_eq!(0_usize, rank_noprecomp_gen(['a','c','a','b'], &['a','c','a','b']));
+/// assert_eq!(0_usize, rank_noprecomp_gen([0,1,2,3], &[0,1,2,3]));
+/// assert_eq!(5_usize, rank_noprecomp_gen([0,1,2,3], &[2,1,0,3])); // 2,0 swapped
+/// ```
+///
+/// ```rust
+/// # use heap_unranking::unrank_noprecomp_gen;
+/// let identity = ['a', 'c', 'a', 'b'];
+///
+/// // With duplicate elements:
+/// let ex1 = unrank_noprecomp_gen(['a','c','a','b'], 0);
+/// let ex2 = unrank_noprecomp_gen(['a','c','a','b'], 5);
+/// assert_eq!(identity, ex1[..]);
+/// assert_eq!(identity, ex2[..]);
+///
+/// // With unique indices assigned:
+/// let ex3 = unrank_noprecomp_gen::<_, usize, usize>([0,1,2,3], 0);
+/// let ex4 = unrank_noprecomp_gen::<_, usize, usize>([0,1,2,3], 5);
+/// let ex5 = unrank_noprecomp_gen::<_, usize, usize>([2,1,0,3], 0);
+/// let ex6 = unrank_noprecomp_gen::<_, usize, usize>([2,1,0,3], 5);
+/// assert_eq!(identity, ex3.into_iter().map(|i| identity[i]).collect::<Vec<_>>()[..]);
+/// assert_eq!(identity, ex4.into_iter().map(|i| identity[i]).collect::<Vec<_>>()[..]);
+/// assert_eq!(identity, ex5.into_iter().map(|i| identity[i]).collect::<Vec<_>>()[..]);
+/// assert_eq!(identity, ex6.into_iter().map(|i| identity[i]).collect::<Vec<_>>()[..]);
+/// ```
+///
+/// ## Enumerating the valid ranks for an identity with duplicates
+/// For any element `e` with `identity.count(e) >= 1` duplicate elements
+/// there are $x!$ permutations of the indices corresponding to an `e`.
+///
+/// If the identity has multiple distinct elements that are duplicated, the number of
+/// possible rankings is the product of these factorials. Example:
+/// - `A, A, B, B, B, C, D` is an identity with `n=7`.
+/// - It has `A` duplicated `2` times
+///   - $2! = 2$
+/// - It has `B` duplicated `3` times:
+///   - $3! = 6$
+/// - There are $2 \times 6 = 12$ ranks that will result in the same unranked permutation.
+///
+/// Enumerating the ranks for "duplicate element" permutations faster than naively enumerating the
+/// index permutations should be doable and seems like a fun problem.
+///
+/// # Examples
+///
+/// ```rust
+/// # use heap_unranking::rank_noprecomp_gen;
+/// assert_eq!(3_usize, rank_noprecomp_gen(0..4, &[0, 2, 1, 3]));
+/// ```
+///
 pub fn rank_noprecomp_gen<R, E, K>(identity: R, permutation: &[E]) -> K
 where
     R: IntoIterator<Item = E>,
-    E: std::marker::Copy + std::cmp::PartialEq,
+    E: std::marker::Copy + std::cmp::PartialEq + std::fmt::Debug,
     K: for<'a> std::ops::MulAssign<&'a K>
         + std::ops::AddAssign<usize>
         + std::ops::AddAssign<K>
         + std::convert::From<usize>
         + num_traits::Zero
-        + ConstOne,
+        + num_traits::ConstOne,
 {
     if permutation.len() <= 1 {
         return K::zero();
@@ -313,20 +373,32 @@ where
         .rev()
     {
         // O(n)
+        // The trick here is that, since we are iterating in descending order,
+        // the last `qs[i]` that has a chance to influence arr[i..] is the current `qs[i]`.
+        // Our goal is to find a `qs[i]` that would put arr[i] at permutation[i].
 
-        // fast-track heuristics:
+        //
+        // The trivial case is when arr[i] == permutation[i] already. In that case the answer is 0,
+        // since nothing needs to be swapped:
+        //
         if arr[i] == permutation_i {
-            // no swaps required to make 0..=i have a suffix of permutation[i]
             continue; // q:=0; O(1) -> O((1/n)0.5n)
         }
 
+        //
+        // That leaves the cases  arr[0 <= idx < i]:
+        //
         let q = {
             let idx = arr[..i] // { idx < i } (because arr[i] != permutation_i)
                 .iter()
                 .position(|&e| e == permutation_i)
                 .unwrap();
             if idx == 0 {
+                // For both the even and odd cases, when arr[0] == permutation[i]:
+                // It will take factorial(i)-1 iterations of Heap's algorithm
+                // to bring it up to arr[i], so `qs[i] = i`:
                 i
+            // The remaining cases find the correct multiple of factorial(i-1):
             } else if (i & 1) == 1 {
                 if idx + 1 == i { 1 } else { idx + 1 }
             } else {
@@ -350,7 +422,7 @@ where
     let mut k: K = qs[0].into();
     let mut fact_i = K::ONE;
     for (i, q) in qs.iter().enumerate().skip(1) {
-        // TODO this can overflow if factorial(permutation.len()) > usize::MAX
+        // TODO this can overflow if factorial(permutation.len()) > K::MAX
         let mut tmp = K::from(i + 1);
         fact_i *= &tmp; // fact_i *= i + 1
         tmp.set_zero();
@@ -428,6 +500,7 @@ where
     {
         forward_by_q(n, q, &mut even_tmp, &mut permutation); // O(n)
     }
+    //forward_by_qs(&qs, &mut even_tmp, &mut permutation);
 
     permutation
 }

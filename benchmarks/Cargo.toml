@@ -1,0 +1,25 @@
+[workspace]
+members = ["."]
+
+[package]
+name = "benchmarks"
+version = "1.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+heap-unranking = { path = ".." }
+[dev-dependencies]
+gungraun = { version = ">=0.19.4", features = ["client_requests"] }
+rand =">=0.10.2"
+
+[profile.bench]
+debug = true
+opt-level = 3
+strip = false
+
+[[bench]]
+harness = false
+name = "gungraun"
+path = "benches/gungraun.rs"
+

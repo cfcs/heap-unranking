@@ -1,6 +1,7 @@
 #![no_main]
 
 use heap_unranking::precompute::{precompute, rank, unrank};
+use heap_unranking::treapheaps::unrank_treap;
 use heap_unranking::*;
 use libfuzzer_sys::fuzz_target;
 use num_bigint::BigUint;
@@ -35,6 +36,12 @@ fuzz_target!(|data: &[u8]| {
     let bigint_recovered_k = rank_bigint(&usize_data);
     let permutation = unrank_bigint(n, bigint_recovered_k.clone());
     assert_eq!(&usize_data[..], &permutation[..]);
+
+    let ur_treap = unrank_treap::<_, _, _>(0..n, bigint_recovered_k.clone());
+    assert_eq!(
+        permutation, ur_treap,
+        "The Treap algorithm should match unrank_bigint based on forward_by_q()"
+    );
 
     if n < 21 {
         // factorial(n) doesn't overflow for n < 21 for 64bit usize
