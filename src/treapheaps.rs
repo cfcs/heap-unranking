@@ -34,7 +34,7 @@
 //! `parent`-pointers to the treap.
 //!
 //! # Benchmarks from my development computer (`forward_by_qs`)
-//! Benchmarking in terms of `heap_unranking::forward_by_q`:
+//! Benchmarking in terms of [`crate::forward_by_q`]:
 //! - For `n=100_005` this is 10 times faster.
 //! - For `n=50_000` this is 5 times faster.
 //! - `n=22_000` is where they break even
@@ -1032,10 +1032,10 @@ where
 }
 
 ///
-/// Implicit Treap-based variant of [`rank_noprecomp_gen`]. $O(n \log{n})$.
+/// Implicit Treap-based variant of [`crate::rank_noprecomp_gen`]. $O(n \log{n})$.
 ///
 /// ## Original
-/// The original [`forward_by_q`]-based implementation consists of a $n$-bound
+/// The original [`crate::forward_by_q`]-based implementation consists of a $n$-bound
 /// loop over the factoradic digits,
 /// and for each digit it:
 /// - Looks for the index with `position()`, in $O(n)$.
@@ -1098,17 +1098,14 @@ where
 /// # use heap_unranking::rank_noprecomp_gen;
 /// assert_eq!(57_usize, rank_noprecomp_gen([0,1,2,3,4], &[4, 1, 3, 0, 2]), "minim");
 /// assert_eq!(57_usize, rank_treap([0,1,2,3,4], &[4, 1, 3, 0, 2_u32]));
-/// ```
-///
-/// assert_eq!(100,200);
 /// assert_eq!(123_usize, rank_noprecomp_gen([0,1,2,3,4,5], &[5, 2, 1, 3, 0, 4]));
-/// assert_eq!(123_usize, rank_treap([0,1,2,3,4,5], &[5, 2, 1, 3, 0, 4]));
-/// assert_eq!(1_usize, rank_treap([0,1], &[1,0]));
-/// assert_eq!(1_usize, rank_treap([0,1,2], &[1,0,2]));
-/// assert_eq!(1_usize, rank_treap([0,1,2,3], &[1,0,2,3]));
-/// assert_eq!(1_usize, rank_treap([0,1,2,3,4], &[1,0,2,3,4]));
-/// assert_eq!(1_usize, rank_treap([0,1,2,3,4,5], &[1,0,2,3,4,5]));
-///
+/// assert_eq!(123_usize, rank_treap([0,1,2,3,4,5], &[5, 2, 1, 3, 0, 4_u32]));
+/// assert_eq!(1_usize, rank_treap([0,1], &[1,0_u32]));
+/// assert_eq!(1_usize, rank_treap([0,1,2], &[1,0,2_u32]));
+/// assert_eq!(1_usize, rank_treap([0,1,2,3], &[1,0,2,3_u32]));
+/// assert_eq!(1_usize, rank_treap([0,1,2,3,4], &[1,0,2,3,4_u32]));
+/// assert_eq!(1_usize, rank_treap([0,1,2,3,4,5], &[1,0,2,3,4,5_u32]));
+/// ```
 ///
 /// ```rust
 /// # use heap_unranking::treapheaps::rank_treap;

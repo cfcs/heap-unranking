@@ -6,6 +6,7 @@
 //! - [`HeapsAlgorithm::at_k()`]: Heap's algorithm starting at a given rank `k`
 //! - [`HeapsAlgorithm::step()`]: Heap's algorithm, step-by-step
 //! - [`HeapsAlgorithm::previous()`]: Heap's algorithm in reverse, step-by-step
+//! - [`HeapsAlgorithm::nth()`]: Skip `n` steps of Heap's algorithm (from an existing state)
 //!
 pub mod precompute;
 pub mod treapheaps;
